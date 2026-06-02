@@ -19,10 +19,10 @@ RUN wget --quiet https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86
 # 4. Conda 경로 설정 및 환경 생성 (수정된 부분)
 ENV PATH=$CONDA_DIR/bin:$PATH
 
-# conda-forge 채널로 통일하여 한 번에 환경 생성 및 필수 패키지 설치
-# 설치 후 불필요한 캐시를 삭제하여 Docker 이미지 용량을 줄임
-RUN conda create -n r-reticulate -c conda-forge python=3.10 \
-    numpy pandas polars plotnine statsmodels mizani scipy plotly -y && \
+# Use strict channel priority and install with better dependency resolution
+RUN conda create -n r-reticulate -c conda-forge -c defaults python=3.10 \
+    numpy pandas polars plotnine statsmodels mizani scipy plotly \
+    --strict-channel-priority -y && \
     conda clean -afy
 
 # 5. R 패키지 설치 (reticulate 및 필수 패키지)
