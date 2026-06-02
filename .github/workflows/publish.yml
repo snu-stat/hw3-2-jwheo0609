@@ -26,6 +26,7 @@ jobs:
 
       - name: Install Python dependencies via Conda
         run: |
+          conda config --add channels conda-forge
           conda install -n r-reticulate -c conda-forge numpy pandas polars plotnine statsmodels mizani scipy plotly
           pip install pybabynames pylahman
         # 추가로 필요한 패키지 설치
