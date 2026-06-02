@@ -476,7 +476,7 @@ fig2 = px.scatter(
 # geom_hline 대체 (y=0 빨간 점선)
 fig2.add_hline(y=0, line_dash="dash", line_color="red")
 fig2.update_layout(template="plotly_white")
-fig2.show()
+#fig2.show()
 
 
 ## iii. 관측된 WPct와 모형에서 예측하는 WPct 산점도 비교
@@ -502,7 +502,7 @@ fig3.add_shape(
     line=dict(dash="dash", color="blue", width=2)
 )
 fig3.update_layout(template="plotly_white")
-fig3.show()
+#fig3.show()
 ```
 
 :::
