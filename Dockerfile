@@ -19,11 +19,11 @@ RUN wget --quiet https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86
 # 4. Conda 경로 설정 및 환경 생성
 ENV PATH=$CONDA_DIR/bin:$PATH
 RUN conda create -n r-reticulate python=3.10 -y && \
-    conda install -n r-reticulate -c conda-forge numpy pandas matplotlib -y
+    conda install -n r-reticulate -c conda-forge numpy pandas polars plotnine statsmodels mizani scipy plotly -y
 # 추가로 필요한 패키지 설치
 
 # 5. R 패키지 설치 (reticulate 및 필수 패키지)
-RUN R -e "install.packages(c('reticulate', 'remotes', 'IRkernel'))" && \
+RUN R -e "install.packages(c('reticulate', 'remotes', 'IRkernel', 'knitr', 'rmarkdown', 'dplyr', 'babynames', 'mdsr', 'Lahman', 'tidyr', 'ggplot2', 'patchwork', 'NHANES', 'tidyverse', 'ggtext', 'mosaicData', 'gridExtra', 'boot', 'tibble', 'car', 'MASS'))" && \
     R -e "IRkernel::installspec(user = FALSE)"
 # 추가로 필요한 패키지 설치
 
