@@ -18,11 +18,9 @@ RUN wget --quiet https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86
 
 # 4. Conda 경로 설정 및 환경 생성
 ENV PATH=$CONDA_DIR/bin:$PATH
-# Conda로는 충돌이 적은 핵심 패키지만 설치
-RUN conda create -n r-reticulate python=3.13 numpy pandas scipy statsmodels -c conda-forge -y
-
-# 나머지는 pip를 이용해 해당 Conda 환경 내에 설치
-RUN conda run -n r-reticulate pip install polars plotnine mizani plotly
+# 환경 생성 전에 solver를 libmamba로 변경하는 명령어 추가
+RUN conda create -n r-reticulate python=3.13 -y
+RUN conda install -n r-reticulate -c conda-forge numpy pandas polars plotnine statsmodels mizani scipy plotly -y
 # 추가로 필요한 패키지 설치
 
 # 5. R 패키지 설치 (reticulate 및 필수 패키지)
