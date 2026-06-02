@@ -20,10 +20,9 @@ RUN wget --quiet https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86
 ENV PATH=$CONDA_DIR/bin:$PATH
 
 # Use strict channel priority and install with better dependency resolution
-RUN conda config --set channel_priority strict && \
-    conda create -n r-reticulate -c conda-forge python=3.10 -y && \
-    conda run -n r-reticulate conda install -c conda-forge \
-      numpy pandas scipy statsmodels polars plotnine mizani plotly -y && \
+RUN conda config --set channel_priority flexible && \
+    conda create -n r-reticulate -c conda-forge python=3.13 -y && \
+    conda run -n r-reticulate conda install -c conda-forge numpy pandas scipy statsmodels polars plotnine mizani plotly -y && \
     conda clean -afy
 
 # 5. R 패키지 설치 (reticulate 및 필수 패키지)
