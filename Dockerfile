@@ -22,7 +22,7 @@ ENV PATH=$CONDA_DIR/bin:$PATH
 # Use strict channel priority and install with better dependency resolution
 RUN conda create -n r-reticulate -c conda-forge -c defaults python=3.10 \
     numpy pandas polars plotnine statsmodels mizani scipy plotly \
-    --strict-channel-priority -y && \
+    -y && \
     conda clean -afy
 
 # 5. R 패키지 설치 (reticulate 및 필수 패키지)
