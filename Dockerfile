@@ -21,7 +21,7 @@ ENV PATH=$CONDA_DIR/bin:$PATH
 
 # conda-forge 채널로 통일하여 한 번에 환경 생성 및 필수 패키지 설치
 # 설치 후 불필요한 캐시를 삭제하여 Docker 이미지 용량을 줄임
-RUN conda create -n r-reticulate -c conda-forge python=3.13 \
+RUN conda create -n r-reticulate -c conda-forge python=3.10 \
     numpy pandas polars plotnine statsmodels mizani scipy plotly -y && \
     conda clean -afy
 
