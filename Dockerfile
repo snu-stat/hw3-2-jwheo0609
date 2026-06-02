@@ -16,17 +16,18 @@ RUN wget --quiet https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86
     /bin/bash ~/miniconda.sh -b -p /opt/conda && \
     rm ~/miniconda.sh
 
-# 4. Conda 경로 설정 및 환경 생성
+# 4. Conda 경로 설정 및 환경 생성 (수정된 부분)
 ENV PATH=$CONDA_DIR/bin:$PATH
-# 환경 생성 전에 solver를 libmamba로 변경하는 명령어 추가
-RUN conda create -n r-reticulate python=3.13 -y
-RUN conda install -n r-reticulate -c conda-forge numpy pandas polars plotnine statsmodels mizani scipy plotly -y
-# 추가로 필요한 패키지 설치
+
+# conda-forge 채널로 통일하여 한 번에 환경 생성 및 필수 패키지 설치
+# 설치 후 불필요한 캐시를 삭제하여 Docker 이미지 용량을 줄임
+RUN conda create -n r-reticulate -c conda-forge python=3.13 \
+    numpy pandas polars plotnine statsmodels mizani scipy plotly -y && \
+    conda clean -afy
 
 # 5. R 패키지 설치 (reticulate 및 필수 패키지)
 RUN R -e "install.packages(c('reticulate', 'remotes', 'IRkernel', 'knitr', 'rmarkdown', 'dplyr', 'babynames', 'mdsr', 'Lahman', 'tidyr', 'ggplot2', 'patchwork', 'NHANES', 'tidyverse', 'ggtext', 'mosaicData', 'gridExtra', 'boot', 'tibble', 'car', 'MASS'))" && \
     R -e "IRkernel::installspec(user = FALSE)"
-# 추가로 필요한 패키지 설치
 
 # 6. reticulate가 사용할 Python 경로 고정 (환경 변수)
 ENV RETICULATE_PYTHON=/opt/conda/envs/r-reticulate/bin/python
