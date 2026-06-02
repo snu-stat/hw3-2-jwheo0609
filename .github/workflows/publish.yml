@@ -1,0 +1,78 @@
+name: Quarto Publish (R & Custom Packages)
+on:
+  push:
+    branches: [ master ]
+
+jobs:
+  build-deploy:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Install System Dependencies
+        run: |
+          sudo apt-get update
+
+      - name: Setup Miniconda
+        uses: conda-incubator/setup-miniconda@v3
+        with:
+          auto-update-conda: true
+          python-version: '3.13'
+          activate-environment: r-reticulate
+          channels: defaults
+
+      - name: Install Python dependencies via Conda
+        run: |
+          conda install -n r-reticulate numpy pandas polars plotnine statsmodels mizani scipy plotly
+          pip install pybabynames pylahman
+        # 추가로 필요한 패키지 설치
+        shell: bash -l {0}
+
+      - name: Set up R
+        uses: r-lib/actions/setup-r@v2
+        with:
+          use-public-rspm: true 
+
+      - name: Set up Quarto
+        uses: quarto-dev/quarto-actions/setup@v2
+
+      - name: Install R Packages
+        env:
+          GITHUB_PAT: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          install.packages(c("reticulate", "knitr", "rmarkdown", "dplyr", "babynames", "mdsr", "Lahman", "tidyr", "ggplot2", "patchwork", "NHANES", "tidyverse", "ggtext", "mosaicData", "gridExtra", "boot", "tibble", "car", "MASS"))
+        # 추가로 필요한 패키지 설치
+        shell: Rscript {0}
+      
+      - name: Prepare README as Index
+        run: cp README.md index.md
+
+      - name: Render Quarto
+        run: |
+          export RETICULATE_PYTHON=$(conda info --base)/envs/r-reticulate/bin/python
+          quarto render
+        shell: bash -l {0}
+
+      - name: Deploy to GitHub Pages
+        uses: peaceiris/actions-gh-pages@v3
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./_site
+          publish_branch: gh-pages
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          push: true
+          tags: ghcr.io/${{ github.repository_owner }}/my-r-env:latest
