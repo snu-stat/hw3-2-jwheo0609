@@ -20,7 +20,7 @@ RUN wget --quiet https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86
 ENV PATH=$CONDA_DIR/bin:$PATH
 
 # Use strict channel priority and install with better dependency resolution
-RUN conda create -n r-reticulate -c conda-forge -c defaults python=3.10 \
+RUN conda create -n r-reticulate -c conda-forge python=3.10 \
     numpy pandas polars plotnine statsmodels mizani scipy plotly \
     -y && \
     conda clean -afy
