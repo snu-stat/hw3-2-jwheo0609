@@ -8,6 +8,8 @@ RUN apt-get update && apt-get install -y \
     git \
     imagemagick \
     libmagick++-dev \
+    libzmq3-dev \
+    pkg-config \
     && rm -rf /var/lib/apt/lists/*
 
 # 3. Miniconda 설치

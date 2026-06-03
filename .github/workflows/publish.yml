@@ -15,6 +15,7 @@ jobs:
       - name: Install System Dependencies
         run: |
           sudo apt-get update
+          sudo apt-get install -y libzmq3-dev pkg-config
 
       - name: Setup Miniconda
         uses: conda-incubator/setup-miniconda@v3
@@ -22,7 +23,7 @@ jobs:
           auto-update-conda: true
           python-version: '3.13'
           activate-environment: r-reticulate
-          channels: defaults
+          channels: conda-forge
 
       - name: Install Python dependencies via Conda
         run: |
