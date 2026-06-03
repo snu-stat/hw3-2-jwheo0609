@@ -24,7 +24,7 @@ ENV PATH=$CONDA_DIR/bin:$PATH
 # Use strict channel priority and install with better dependency resolution
 RUN conda config --set auto_activate_base false && \
     conda create -n r-reticulate -c conda-forge --override-channels python=3.13 \
-    numpy pandas polars plotnine statsmodels mizani scipy plotly -y && \
+    jupyter numpy pandas polars plotnine statsmodels mizani scipy plotly -y && \
     conda clean -afy
 
 # 5. R 패키지 설치 (reticulate 및 필수 패키지)
