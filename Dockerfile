@@ -26,10 +26,8 @@ RUN conda config --set auto_activate_base false && \
     jupyter numpy pandas polars plotnine statsmodels mizani scipy plotly -y && \
     conda clean -afy
 
-# ==============================================================
 # ✨ 핵심 추가 부분: R이 jupyter를 찾을 수 있도록 가상환경 경로를 PATH에 추가
 ENV PATH=/opt/conda/envs/r-reticulate/bin:$PATH
-# ==============================================================
 
 # 5. R 패키지 설치 (reticulate 및 필수 패키지)
 RUN R -e "install.packages(c('reticulate', 'remotes', 'IRkernel', 'knitr', 'rmarkdown', 'dplyr', 'babynames', 'mdsr', 'Lahman', 'tidyr', 'ggplot2', 'patchwork', 'NHANES', 'tidyverse', 'ggtext', 'mosaicData', 'gridExtra', 'boot', 'tibble', 'car', 'MASS'))" && \
