@@ -23,7 +23,7 @@ ENV PATH=$CONDA_DIR/bin:$PATH
 
 RUN conda config --set auto_activate_base false && \
     conda create -n r-reticulate -c conda-forge --override-channels python=3.13 \
-    jupyter numpy pandas polars plotnine statsmodels mizani scipy plotly pyarrow -y && \
+    jupyter numpy pandas polars plotnine statsmodels mizani scipy plotly pyarrow pylahman -y && \
     conda clean -afy
 
 # ✨ 핵심 추가 부분: R이 jupyter를 찾을 수 있도록 가상환경 경로를 PATH에 추가

@@ -30,8 +30,8 @@ jobs:
         run: |
           conda config --set channel_priority flexible
           conda install -n r-reticulate -c conda-forge --override-channels \
-            jupyter numpy pandas scipy statsmodels polars plotnine mizani plotly pyarrow
-          pip install pybabynames pylahman
+            jupyter numpy pandas scipy statsmodels polars plotnine mizani plotly pyarrow pylahman
+          pip install pybabynames
         shell: bash -l {0}
 
       - name: Set up R
