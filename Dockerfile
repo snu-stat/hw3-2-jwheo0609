@@ -23,10 +23,9 @@ ENV PATH=$CONDA_DIR/bin:$PATH
 
 RUN conda config --set auto_activate_base false && \
     conda create -n r-reticulate -c conda-forge --override-channels python=3.12 \
-    jupyter pip numpy pandas polars plotnine statsmodels mizani scipy plotly -y && \
+    jupyter ipython ipykernel pip numpy pandas polars plotnine statsmodels mizani scipy plotly -y && \
     conda clean -afy
 
-# ✨ 추가된 부분: 도커 빌드 시에도 가상환경 내부에 pip 패키지 설치
 RUN conda run -n r-reticulate pip install pybabynames pylahman
 
 ENV PATH=/opt/conda/envs/r-reticulate/bin:$PATH
