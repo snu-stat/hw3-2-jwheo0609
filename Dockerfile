@@ -22,11 +22,13 @@ RUN wget --quiet https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86
 ENV PATH=$CONDA_DIR/bin:$PATH
 
 RUN conda config --set auto_activate_base false && \
-    conda create -n r-reticulate -c conda-forge --override-channels python=3.13 \
-    jupyter numpy pandas polars plotnine statsmodels mizani scipy plotly pyarrow pylahman -y && \
+    conda create -n r-reticulate -c conda-forge --override-channels python=3.12 \
+    jupyter pip numpy pandas polars plotnine statsmodels mizani scipy plotly -y && \
     conda clean -afy
 
-# ✨ 핵심 추가 부분: R이 jupyter를 찾을 수 있도록 가상환경 경로를 PATH에 추가
+# ✨ 추가된 부분: 도커 빌드 시에도 가상환경 내부에 pip 패키지 설치
+RUN conda run -n r-reticulate pip install pybabynames pylahman
+
 ENV PATH=/opt/conda/envs/r-reticulate/bin:$PATH
 
 # 5. R 패키지 설치 (reticulate 및 필수 패키지)

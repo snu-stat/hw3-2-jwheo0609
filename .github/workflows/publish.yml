@@ -29,9 +29,11 @@ jobs:
       - name: Install Python dependencies via Conda
         run: |
           conda config --set channel_priority flexible
+          # 1. 패키지 목록에 'pip'를 명시적으로 추가합니다.
           conda install -n r-reticulate -c conda-forge --override-channels \
-            jupyter numpy pandas scipy statsmodels polars plotnine mizani plotly pyarrow
-          pip install pylahman
+            jupyter pip numpy pandas scipy statsmodels polars plotnine mizani plotly
+          # 2. conda run을 이용해 r-reticulate 환경 안에서 pip를 실행하도록 강제합니다.
+          conda run -n r-reticulate pip install pybabynames pylahman
         shell: bash -l {0}
 
       - name: Set up R
