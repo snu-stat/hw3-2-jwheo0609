@@ -57,6 +57,8 @@ jobs:
       - name: Render Quarto
         run: |
           export RETICULATE_PYTHON=$(conda info --base)/envs/r-reticulate/bin/python
+          # ✨ 추가된 부분: Quarto가 무조건 Conda 환경의 파이썬을 사용하도록 강제 고정
+          export QUARTO_PYTHON=$(conda info --base)/envs/r-reticulate/bin/python
           quarto render
         shell: bash -l {0}
 
