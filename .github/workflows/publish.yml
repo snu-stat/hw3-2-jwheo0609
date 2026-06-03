@@ -26,7 +26,7 @@ jobs:
 
       - name: Install Python dependencies via Conda
         run: |
-          conda config --set channel_priority strict
+          conda config --set channel_priority flexible
           conda install -n r-reticulate -c conda-forge \
             numpy pandas scipy statsmodels polars plotnine mizani plotly
           pip install pybabynames pylahman
