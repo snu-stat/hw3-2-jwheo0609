@@ -29,7 +29,7 @@ jobs:
           conda config --set channel_priority strict
           conda install -n r-reticulate -c conda-forge \
             numpy pandas scipy statsmodels polars plotnine mizani plotly
-          pip install pybabynames pylahran
+          pip install pybabynames pylahman
         shell: bash -l {0}
 
       - name: Set up R
