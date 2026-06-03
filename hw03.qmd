@@ -441,46 +441,36 @@ import plotly.express as px
 # (이전 단계에서 baseball_data, X, model_glm이 생성되어 있다고 가정합니다.)
 
 ## i. Residual Deviance에 대한 해석 (카이제곱 분포와 비교)
-# R: deviance(model_glm), df.residual(model_glm)
 res_deviance = model_glm.deviance
 df_res = model_glm.df_resid
-
-# R의 1 - pchisq(...)는 scipy 카이제곱 생존함수(sf)와 동일합니다.
 p_value = chi2.sf(res_deviance, df_res)
 
 print(f"Residual Deviance: {res_deviance:.4f}")
 print(f"Degrees of Freedom: {df_res}")
 print(f"P-value: {p_value:.6f}")
-# P-value가 0.05보다 크면 모형이 데이터에 잘 적합(fit)되었다고 해석할 수 있습니다.
-
 
 ## ii. Deviance residuals vs linear predictors (eta) 산점도
-# type="link": 선형 예측 변수(eta) 추출 (linear=True)
 eta = model_glm.predict(X, linear=True)
-# type="deviance": 이탈도 잔차 추출
 dev_res = model_glm.resid_deviance
 
-# polars 데이터프레임으로 묶기
 plot_data_2 = pl.DataFrame({
     "eta": eta,
     "dev_res": dev_res
 })
 
-# plotly를 사용한 시각화 (ggplot2 대체)
 fig2 = px.scatter(
     plot_data_2, x="eta", y="dev_res", 
     opacity=0.6,
     title="Deviance Residuals vs Linear Predictors",
     labels={"eta": "Linear Predictor (eta)", "dev_res": "Deviance Residual"}
 )
-# geom_hline 대체 (y=0 빨간 점선)
-fig2.add_hline(y=0, line_dash="dash", line_color="red")
-fig2.update_layout(template="plotly_white")
+# ✨ 수정 포인트: 결과를 fig2에 다시 할당하여 자동 출력을 막습니다.
+fig2 = fig2.add_hline(y=0, line_dash="dash", line_color="red")
+fig2 = fig2.update_layout(template="plotly_white")
 #fig2.show()
 
 
 ## iii. 관측된 WPct와 모형에서 예측하는 WPct 산점도 비교
-# type="response": 예측 승률 추출 (predict의 기본값)
 pred_WPct = model_glm.predict(X)
 obs_WPct = baseball_data.get_column("WPct").to_numpy()
 
@@ -495,13 +485,13 @@ fig3 = px.scatter(
     title="Observed vs Predicted WPct",
     labels={"pred_WPct": "Predicted WPct", "obs_WPct": "Observed WPct"}
 )
-# geom_abline 대체 (y=x 파란 점선, 승률이므로 0~1 범위로 설정)
-fig3.add_shape(
+# ✨ 수정 포인트: 결과를 fig3에 다시 할당하여 자동 출력을 막습니다.
+fig3 = fig3.add_shape(
     type="line", 
     x0=0, y0=0, x1=1, y1=1,
     line=dict(dash="dash", color="blue", width=2)
 )
-fig3.update_layout(template="plotly_white")
+fig3 = fig3.update_layout(template="plotly_white")
 #fig3.show()
 ```
 
