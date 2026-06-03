@@ -78,4 +78,5 @@ jobs:
         with:
           context: .
           push: true
-          tags: ghcr.io/${{ github.repository_owner }}/my-r-env:latest
+          # 조직 이름 대신 현재 실행 중인 유저(나)의 이름으로 Push
+          tags: ghcr.io/${{ github.actor }}/my-r-env:latest
