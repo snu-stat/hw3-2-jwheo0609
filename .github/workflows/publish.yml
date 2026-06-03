@@ -26,11 +26,10 @@ jobs:
 
       - name: Install Python dependencies via Conda
         run: |
-          conda config --add channels conda-forge
           conda config --set channel_priority strict
           conda install -n r-reticulate -c conda-forge \
-            numpy pandas polars plotnine statsmodels mizani scipy plotly
-          pip install pybabynames pylahman
+            numpy pandas scipy statsmodels polars plotnine mizani plotly
+          pip install pybabynames pylahran
         shell: bash -l {0}
 
       - name: Set up R
