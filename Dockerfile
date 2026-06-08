@@ -26,6 +26,9 @@ RUN conda config --set auto_activate_base false && \
     conda clean -afy
 # 추가로 필요한 패키지 설치
 
+# ✨ 추가된 부분: r-reticulate 환경의 실행 파일(jupyter 등)을 전역에서 사용할 수 있게 PATH에 등록합니다.
+ENV PATH=/opt/conda/envs/r-reticulate/bin:$PATH
+
 # 5. R 패키지 설치 (reticulate 및 필수 패키지)
 RUN R -e "install.packages(c('reticulate', 'remotes', 'IRkernel', 'knitr', 'rmarkdown', 'dplyr', 'Lahman', 'ggplot2', 'patchwork', 'NHANES', 'tidyverse', 'car', 'MASS'))" && \
     R -e "IRkernel::installspec(user = FALSE)"
