@@ -31,8 +31,8 @@ jobs:
           conda config --set channel_priority flexible
           # ✨ jupyter 옆에 ipython과 ipykernel을 추가했습니다.
           conda install -n r-reticulate -c conda-forge --override-channels \
-            jupyter ipython ipykernel pip numpy pandas scipy statsmodels polars plotnine mizani plotly
-          conda run -n r-reticulate pip install pybabynames pylahman
+            jupyter ipython ipykernel pip numpy pandas scipy statsmodels polars plotnine
+          conda run -n r-reticulate pip install pylahman
         shell: bash -l {0}
 
       - name: Set up R
@@ -47,7 +47,7 @@ jobs:
         env:
           GITHUB_PAT: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          install.packages(c("reticulate", "knitr", "rmarkdown", "dplyr", "babynames", "mdsr", "Lahman", "tidyr", "ggplot2", "patchwork", "NHANES", "tidyverse", "ggtext", "mosaicData", "gridExtra", "boot", "tibble", "car", "MASS"))
+          install.packages(c("reticulate", "knitr", "rmarkdown", "dplyr", "Lahman", "tidyr", "ggplot2", "patchwork", "NHANES", "tidyverse", "car", "MASS"))
         # 추가로 필요한 패키지 설치
         shell: Rscript {0}
       

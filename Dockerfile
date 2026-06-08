@@ -8,8 +8,6 @@ RUN apt-get update && apt-get install -y \
     git \
     imagemagick \
     libmagick++-dev \
-    libzmq3-dev \
-    pkg-config \
     && rm -rf /var/lib/apt/lists/*
 
 # 3. Miniconda 설치
@@ -20,26 +18,33 @@ RUN wget --quiet https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86
 
 # 4. Conda 경로 설정 및 환경 생성
 ENV PATH=$CONDA_DIR/bin:$PATH
-
 RUN conda config --set auto_activate_base false && \
-    conda create -n r-reticulate -c conda-forge --override-channels python=3.12 \
-    jupyter ipython ipykernel pip numpy pandas polars plotnine statsmodels mizani scipy plotly -y && \
+    conda create -n r-reticulate -c conda-forge --override-channels python=3.13 \
+    jupyter ipython ipykernel pip numpy pandas polars plotnine statsmodels scipy -y && \
     conda clean -afy
-
-RUN conda run -n r-reticulate pip install pybabynames pylahman
-
-ENV PATH=/opt/conda/envs/r-reticulate/bin:$PATH
+# 추가로 필요한 패키지 설치
 
 # 5. R 패키지 설치 (reticulate 및 필수 패키지)
-RUN R -e "install.packages(c('reticulate', 'remotes', 'IRkernel', 'knitr', 'rmarkdown', 'dplyr', 'babynames', 'mdsr', 'Lahman', 'tidyr', 'ggplot2', 'patchwork', 'NHANES', 'tidyverse', 'ggtext', 'mosaicData', 'gridExtra', 'boot', 'tibble', 'car', 'MASS'))" && \
+RUN R -e "install.packages(c('reticulate', 'remotes', 'IRkernel', 'knitr', 'rmarkdown', 'dplyr', 'Lahman', 'ggplot2', 'patchwork', 'NHANES', 'tidyverse', 'car', 'MASS'))" && \
     R -e "IRkernel::installspec(user = FALSE)"
+# 추가로 필요한 패키지 설치
 
 # 6. reticulate가 사용할 Python 경로 고정 (환경 변수)
 ENV RETICULATE_PYTHON=/opt/conda/envs/r-reticulate/bin/python
 
-# 7. (선택) Binder 사용자를 위한 권한 설정
-# Binder는 보통 'jovyan' 유저 권한으로 실행
-RUN chown -R ${NB_USER:-root} /opt/conda
+# 7. Binder용 jovyan 유저 생성
+ENV NB_USER=jovyan
+ENV NB_UID=1000
+RUN usermod -l ${NB_USER} rstudio && \
+    usermod -d /home/${NB_USER} -m ${NB_USER} && \
+    chown -R ${NB_USER} /opt/conda /home/${NB_USER}
+    
+# 8. 노트북 파일 복사
+COPY _site/hw03.ipynb /home/${NB_USER}/hw03.ipynb
+RUN chown ${NB_USER}:users /home/${NB_USER}/hw03.ipynb
 
-# 기본 실행 경로 설정
-WORKDIR /home/rstudio
+USER ${NB_USER}
+WORKDIR /home/${NB_USER}
+
+# Binder가 기대하는 포트
+EXPOSE 8888

@@ -1,7 +1,7 @@
 ---
 title: "숙제 3"
 subtitle: "데이터과학 입문"
-author: "허종원"
+author: "원중호"
 date: today
 date-format: "MMMM YYYY"
 institute: 서울대학교 통계학과
@@ -15,7 +15,7 @@ mainfont: "Noto Sans Korean Light"
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE, eval = TRUE, warning = FALSE, message = FALSE, fig.width=6, fig.height=4, out.width = "70%", fig.align = "center", python.reticulate = TRUE)  
 options(knitr.table.format = "html")
-# reticulate::use_condaenv(condaenv = "introds", conda = "C:/Users/LG/anaconda3/Scripts/conda.exe") # for persistency
+reticulate::use_condaenv(condaenv = "introds", conda = "C:/Users/LG/anaconda3/Scripts/conda.exe") # for persistency
 ```
 
 ## 지시사항
@@ -67,100 +67,100 @@ Python code
 
 ::: {.panel-tabset}
 
-## R(Problem 10.6.6)
+## R
 
 ```{r}
-# 1. 필요한 패키지 로드 (설치되어 있지 않다면 install.packages() 실행)
-# install.packages(c("NHANES", "dplyr"))
+# 필수 패키지 로드
+library(tidyverse)
 library(NHANES)
-library(dplyr)
 
-# 2. 데이터 전처리
-nhanes_model_data <- NHANES %>%
-  # 조건 1: 20세 이상 성인 필터링
+# ==========================================
+# 1단계: 데이터 전처리 및 종속 변수 생성
+# ==========================================
+nhanes_clean <- NHANES %>%
+  # 20세 이상 필터링
   filter(Age >= 20) %>%
-  
-  # 조건 2: 종속 변수(현재 흡연 여부) 생성 (힌트 적용)
   mutate(
+    # 새로운 종속 변수 'CurrentSmoker' 생성 (1 = 현재 흡연, 0 = 비흡연)
     CurrentSmoker = case_when(
-      SmokeNow == "Yes" ~ 1,                # 현재 흡연 중이면 1
-      SmokeNow == "No" ~ 0,                 # 과거엔 피웠으나 현재 안 피우면 0
-      Smoke100 == "No" ~ 0,                 # 평생 100개비 미만 흡연자는 비흡연자(0)로 코딩
-      TRUE ~ NA_real_                       # 기타 응답 거부 등의 결측치는 NA로 유지
+      Smoke100 == "No" ~ 0,       # 평생 100개비 미만 흡연자 -> 현재 흡연 X
+      SmokeNow == "No" ~ 0,       # 과거 흡연자이나 현재 안 피움 -> 현재 흡연 X
+      SmokeNow == "Yes" ~ 1,      # 현재 흡연자 -> 현재 흡연 O
+      TRUE ~ NA_real_             # 그 외 예기치 않은 결측치는 NA 처리
     )
   ) %>%
-  
-  # 예측 변수 선택 (나이, 성별, 교육수준, 빈곤지수 등 임의의 유의미한 예측 변수 선택)
-  select(CurrentSmoker, Age, Gender, Education, Poverty) %>%
-  
-  # 분석의 정확성을 위해 선택된 변수 중 결측치가 있는 행 제거
-  na.omit()
+  # 모델에 사용할 변수들만 선택 (종속 변수 + 예측 변수)
+  dplyr::select(CurrentSmoker, Gender, Age, Education, Poverty) %>%
+  # 회귀 분석을 위해 결측치(NA)가 있는 행 제거
+  drop_na()
 
-# 3. 로지스틱 회귀 모델 구축
-# CurrentSmoker(현재 흡연 여부)를 예측하기 위한 로지스틱 회귀(binomial) 적용
-smoking_model <- glm(CurrentSmoker ~ Age + Gender + Education + Poverty, 
-                     data = nhanes_model_data, 
-                     family = binomial(link = "logit"))
+# 변수 재코딩이 잘 되었는지 확인 (선택 사항)
+# mosaic::tally(~ CurrentSmoker, data = nhanes_clean)
 
-# 4. 모델 결과 요약 확인
+# ==========================================
+# 2단계: 로지스틱 회귀 모델 구축
+# ==========================================
+# 종속 변수가 이항(0 또는 1)이므로 family = binomial 사용
+smoking_model <- glm(CurrentSmoker ~ Gender + Age + Education + Poverty, 
+                     family = binomial(link = "logit"), 
+                     data = nhanes_clean)
+
+# ==========================================
+# 3단계: 모델 결과 확인
+# ==========================================
 summary(smoking_model)
-
-# 5. (추가) 오즈비(Odds Ratio)와 95% 신뢰구간 확인
-# 로지스틱 회귀의 계수(Log-odds)를 지수화(exp)하여 해석하기 쉬운 오즈비로 변환
-exp(cbind(OR = coef(smoking_model), confint(smoking_model)))
 ```
 
-## Python(Problem 10.6.6)
+## Python
 
 ```{python}
 import polars as pl
 import statsmodels.formula.api as smf
-import numpy as np
 
 # null_values 파라미터를 추가하여 "NA" 문자열을 결측치로 올바르게 인식시킵니다.
-df = pl.read_csv("data/NHANES.csv", null_values=["NA", "NA "]) 
+nhanes = pl.read_csv("data/NHANES.csv", null_values=["NA", "NA "]) 
 
-# 이후 코드는 이전과 동일합니다.
-nhanes_model_data = (
-    df
+# ==========================================
+# 1단계: 데이터 전처리 및 종속 변수 생성 (Polars)
+# ==========================================
+nhanes_clean = (
+    nhanes
+    # 1) 20세 이상 필터링 (R의 filter)
     .filter(pl.col("Age") >= 20)
+    
+    # 2) 종속 변수 생성 (R의 mutate & case_when과 완벽히 대응!)
     .with_columns(
-        pl.when(pl.col("SmokeNow") == "Yes").then(1)
+        pl.when(pl.col("Smoke100") == "No").then(0)
         .when(pl.col("SmokeNow") == "No").then(0)
-        .when(pl.col("Smoke100") == "No").then(0)
-        .otherwise(None)
+        .when(pl.col("SmokeNow") == "Yes").then(1)
+        .otherwise(None)  # 그 외는 결측치(Null) 처리
         .alias("CurrentSmoker")
     )
-    .select(["CurrentSmoker", "Age", "Gender", "Education", "Poverty"])
+    
+    # 3) 변수 선택 (R의 select)
+    .select(["CurrentSmoker", "Gender", "Age", "Education", "Poverty"])
+    
+    # 4) 결측치 제거 (R의 drop_na)
     .drop_nulls()
 )
 
-# 3. 로지스틱 회귀 모델 구축 (Statsmodels 활용)
-# statsmodels의 formula API는 Pandas DataFrame을 기반으로 작동하므로 변환해 줍니다.
-nhanes_pd = nhanes_model_data.to_pandas()
+# ==========================================
+# 2단계: 로지스틱 회귀 모델 구축
+# ==========================================
+# statsmodels 호환을 위해 Polars DataFrame을 Pandas DataFrame으로 변환
+nhanes_pd = nhanes_clean.to_pandas()
 
-# R의 glm()과 동일하게 formula 방식을 사용하여 로지스틱 회귀 모델(Logit) 적합
-smoking_model = smf.logit(
-    formula="CurrentSmoker ~ Age + Gender + Education + Poverty", 
-    data=nhanes_pd
-).fit()
+# 로지스틱 회귀 모델(logit) 학습
+smoking_model = smf.logit('CurrentSmoker ~ Gender + Age + Education + Poverty', 
+                          data=nhanes_pd).fit()
 
-# 4. 모델 결과 요약 확인
+# ==========================================
+# 3단계: 모델 결과 확인
+# ==========================================
 print(smoking_model.summary())
-
-# 5. (추가) 오즈비(Odds Ratio)와 95% 신뢰구간 확인
-# 로지스틱 회귀 계수(Log-odds)를 지수화(exp)하여 해석하기 쉬운 오즈비로 변환
-print("\n--- 오즈비(Odds Ratio) 및 95% 신뢰구간 ---")
-odds_ratios = np.exp(smoking_model.params)
-conf_intervals = np.exp(smoking_model.conf_int())
-conf_intervals.columns = ['2.5%', '97.5%']
-conf_intervals['Odds Ratio'] = odds_ratios
-
-print(conf_intervals)
 ```
 
 :::
-
 
 
 # 2부  데이터 분석 실무
@@ -199,79 +199,32 @@ $$
 
 ::: {.panel-tabset}
 
-## R(Problem 2-1)
-
-```{r}
-# 필요한 패키지 로드
-# install.packages(c("Lahman", "dplyr", "ggplot2")) # 패키지가 없다면 설치
-library(Lahman)
-library(dplyr)
-library(ggplot2)
-
-# 2010~2025년 데이터 추출 (2020년 코로나 시즌 제외)
-baseball_data <- Teams %>%
-  filter(yearID >= 2010 & yearID <= 2025 & yearID != 2020) %>%
-  mutate(
-    WPct = W / G,      # 승률 = 승리(W) / 경기수(G)
-    RS = R             # 득점 (Runs Scored, Teams 데이터셋의 R 변수)
-    # RA(Runs Allowed)는 데이터셋에 이미 존재함
-  ) %>%
-  filter(!is.na(RS) & !is.na(RA) & !is.na(WPct)) # 결측치 제거
-```
-
-## Python(Problem 2-1)
-
-```{python}
-import polars as pl
-import pylahman
-
-# pylahman은 일반적으로 pandas DataFrame을 제공하므로, 
-# 이를 polars의 DataFrame으로 변환하여 사용합니다.
-# (만약 Teams가 이미 함수 형태라면 Teams()로 호출하시면 됩니다)
-teams_df = pl.from_pandas(pylahman.Teams()) 
-
-# R의 dplyr 파이프라인과 동일한 흐름으로 작성된 polars 체이닝
-baseball_data = (
-    teams_df
-    # 1. 2010~2025년 데이터 추출 (2020년 코로나 시즌 제외)
-    .filter(
-        (pl.col("yearID") >= 2010) & 
-        (pl.col("yearID") <= 2025) & 
-        (pl.col("yearID") != 2020)
-    )
-    # 2. 파생변수 생성 (승률, 득점)
-    .with_columns(
-        WPct = pl.col("W") / pl.col("G"),  # 승률 = 승리(W) / 경기수(G)
-        RS = pl.col("R")                   # 득점 (Runs Scored)
-    )
-    # 3. 특정 컬럼에 대한 결측치(NA) 제거
-    .drop_nulls(subset=["RS", "RA", "WPct"])
-)
-
-# 결과 확인
-print(baseball_data.head())
-```
-
-:::
-
-
-
-::: {.panel-tabset}
-
 ## R(Problem 2-1.1)
 
 ```{r}
-# 비선형 모형 적합: WPct = 1 / (1 + (RA/RS)^k)
-# 초기값(start)으로 Bill James가 처음 제시했던 k=2를 사용합니다.
-model_nls <- nls(WPct ~ 1 / (1 + (RA/RS)^k), 
+# 필수 패키지 로드
+library(Lahman)
+library(tidyverse)
+
+# 데이터 필터링 및 파생 변수 생성
+baseball_data <- Teams %>%
+  filter(yearID >= 2010 & yearID <= 2025 & yearID != 2020) %>%
+  mutate(
+    WPct = W / (W + L),       # 실제 승률
+    log_W_L = log(W / L),     # W/L의 로그 (선형 회귀용)
+    log_R_RA = log(R / RA)    # RS/RA의 로그 (선형 회귀용)
+  )
+
+# 수식을 직접 사용하여 nls 모형 적합 (초기값 k = 2로 설정)
+nls_model <- nls(WPct ~ 1 / (1 + (RA/R)^k), 
                  data = baseball_data, 
                  start = list(k = 2))
 
-# 점추정치 확인
-summary(model_nls)
+# 1. 모수 k의 점추정치 확인
+summary(nls_model)
 
-# 신뢰구간 확인
-confint(model_nls)
+# 2. 모수 k의 95% 신뢰구간 구하기
+confint(nls_model)
 ```
 
 ## Python(Problem 2-1.1)
@@ -280,47 +233,63 @@ confint(model_nls)
 import polars as pl
 import numpy as np
 from scipy.optimize import curve_fit
-from scipy import stats
+from scipy.stats import t
+import pylahman
 
-# 1. 비선형 함수 정의: WPct = 1 / (1 + x^k), 여기서 x = RA / RS
-def pythagorean_expectation(x, k):
-    return 1 / (1 + x**k)
+# 1. 데이터 필터링 및 파생 변수 생성
+# pylahman의 Teams 데이터를 polars DataFrame으로 변환 후 조작합니다.
+baseball_data = (
+    pl.from_pandas(pylahman.Teams())
+    .filter(
+        (pl.col("yearID") >= 2010) & 
+        (pl.col("yearID") <= 2025) & 
+        (pl.col("yearID") != 2020)
+    )
+    .with_columns(
+        WPct = pl.col("W") / (pl.col("W") + pl.col("L")),      # 실제 승률
+        log_W_L = (pl.col("W") / pl.col("L")).log(),           # W/L의 자연로그
+        log_R_RA = (pl.col("R") / pl.col("RA")).log()          # RS/RA의 자연로그
+    )
+)
 
-# 2. 모델 적합을 위한 데이터 준비 (polars -> numpy array)
-# RA/RS 비율을 x 데이터로, WPct를 y 데이터로 사용합니다.
-x_data = (baseball_data.get_column("RA") / baseball_data.get_column("RS")).to_numpy()
-y_data = baseball_data.get_column("WPct").to_numpy()
+# 2. 비선형 회귀(nls)를 위한 수식(피타고리안 승률) 정의
+def pythagorean_model(X, k):
+    RA, R = X
+    return 1 / (1 + (RA / R)**k)
 
-# 3. 비선형 모형 적합 (R의 nls 대체)
-# p0=[2]는 R의 start = list(k = 2)와 동일한 초기값 설정입니다.
-popt, pcov = curve_fit(pythagorean_expectation, x_data, y_data, p0=[2])
+# 모델 적합을 위해 데이터를 Numpy 배열로 추출
+X_data = np.vstack((baseball_data["RA"].to_numpy(), baseball_data["R"].to_numpy()))
+y_data = baseball_data["WPct"].to_numpy()
 
-# 점추정치 (k의 추정값)
-k_estimate = popt[0]
+# curve_fit을 사용하여 모형 적합 (초기값 k = 2.0)
+popt, pcov = curve_fit(pythagorean_model, X_data, y_data, p0=[2.0])
 
-# 공분산 행렬(pcov)의 대각원소 제곱근을 통해 표준오차(SE) 계산
+# 추정치와 표준오차 추출
+k_est = popt[0]
 se = np.sqrt(np.diag(pcov))[0]
 
-# 4. 점추정치 및 요약 결과 확인 (R의 summary 대체)
-print("=== Model Summary ===")
-print(f"Estimate for k: {k_estimate:.5f}")
-print(f"Standard Error: {se:.5f}")
-
-# 5. 신뢰구간 확인 (R의 confint 대체)
-# t-분포를 이용한 95% Wald 신뢰구간 계산
-alpha = 0.05
+# --- R의 summary(nls_model) 역할 ---
 n = len(y_data)
-p = len(popt) # 추정할 파라미터의 수 (여기서는 k 1개)
-dof = max(0, n - p) # 자유도 (n - 1)
+p = 1 # 추정하는 모수의 수 (k 한 개)
+df = n - p
+t_stat = k_est / se
+p_val = 2 * (1 - t.cdf(abs(t_stat), df))
 
-# 양측 검정을 위한 t-임계값
-t_val = stats.t.ppf(1.0 - alpha / 2.0, dof)
+print("=== 1. 모수 k의 점추정치 확인 (summary) ===")
+print(f"Estimate for k : {k_est:.5f}")
+print(f"Std. Error     : {se:.5f}")
+print(f"t value        : {t_stat:.3f}")
+print(f"Pr(>|t|)       : {p_val:.2e}\n")
 
-ci_lower = k_estimate - t_val * se
-ci_upper = k_estimate + t_val * se
 
-print("\n=== Confidence Interval (95%) ===")
-print(f"2.5%  : {ci_lower:.5f}")
+# --- R의 confint(nls_model) 역할 ---
+alpha = 0.05
+t_crit = t.ppf(1 - alpha/2, df) # t-분포의 임계값
+ci_lower = k_est - t_crit * se
+ci_upper = k_est + t_crit * se
+
+print("=== 2. 모수 k의 95% 신뢰구간 구하기 (confint) ===")
+print(f" 2.5% : {ci_lower:.5f}")
 print(f"97.5% : {ci_upper:.5f}")
 ```
 
@@ -333,18 +302,27 @@ print(f"97.5% : {ci_upper:.5f}")
 ## R(Problem 2-1.2)
 
 ```{r}
-# 절편이 없는(-1 또는 0+) 로지스틱 회귀 모형 적합
-# 비율 데이터를 반응변수로 쓸 때는 weights 파라미터에 시행 횟수(G)를 넣어줍니다.
-model_glm <- glm(WPct ~ 0 + I(log(RS/RA)), 
-                 family = binomial(link = "logit"), 
-                 weights = G, 
-                 data = baseball_data)
+# 필수 패키지 및 데이터 준비 (이전 문제와 동일)
+library(Lahman)
+library(tidyverse)
 
-# 점추정치 확인 (1번 결과의 k값과 매우 유사한지 확인)
-summary(model_glm)
+baseball_data <- Teams %>%
+  filter(yearID >= 2010 & yearID <= 2025 & yearID != 2020) %>%
+  mutate(
+    log_R_RA = log(R / RA)  # 독립변수: ln(RS/RA)
+  )
 
-# 신뢰구간 확인
-confint(model_glm)
+# 로지스틱 회귀 모형 적합 (절편 없음: 0 + 사용)
+# 종속변수로 성공(W)과 실패(L)의 매트릭스 결합을 사용
+logit_model <- glm(cbind(W, L) ~ 0 + log_R_RA, 
+                   family = binomial(link = "logit"), 
+                   data = baseball_data)
+
+# 1. 모수 k (즉, beta_1)의 점추정치 확인
+summary(logit_model)
+
+# 2. 모수 k (즉, beta_1)의 95% 신뢰구간 확인
+confint(logit_model)
 ```
 
 ## Python(Problem 2-1.2)
@@ -353,29 +331,45 @@ confint(model_glm)
 import polars as pl
 import numpy as np
 import statsmodels.api as sm
+import pylahman
 
-# 1. 독립변수(X)와 종속변수(y) 데이터 가공
-# R의 log(RS/RA) 계산 후 NumPy 배열로 변환
-X = np.log(baseball_data.get_column("RS") / baseball_data.get_column("RA")).to_numpy()
+# 1. 데이터 필터링 및 파생 변수 생성
+# pylahman의 Teams 데이터를 polars DataFrame으로 변환 후 조작합니다.
+baseball_data = (
+    pl.from_pandas(pylahman.Teams())
+    .filter(
+        (pl.col("yearID") >= 2010) & 
+        (pl.col("yearID") <= 2025) & 
+        (pl.col("yearID") != 2020)
+    )
+    .with_columns(
+        log_R_RA = (pl.col("R") / pl.col("RA")).log()  # 독립변수: ln(RS/RA)
+    )
+)
 
-# R의 'WPct(승률)'와 'weights=G(경기수)' 조합을 [성공, 실패] 배열로 변환
-w = baseball_data.get_column("W").to_numpy()
-g = baseball_data.get_column("G").to_numpy()
-y = np.column_stack([w, g - w])  # [승리 횟수, 패배 횟수] 2차원 행렬 생성
+# 2. statsmodels GLM 입력 형식에 맞게 데이터 추출
+# 종속변수(endog): [성공 횟수(W), 실패 횟수(L)] 구조의 2차원 배열 생성
+endog = baseball_data.select(["W", "L"]).to_numpy()
 
-# 2. 일반화 선형 모형(GLM) 중 로지스틱 모형(Binomial) 적합
-# statsmodels는 별도로 상수항을 추가(sm.add_constant)하지 않으면 
-# 기본적으로 절편이 없는(0+) 모형을 생성하므로 R의 조건과 일치합니다.
-model_glm = sm.GLM(y, X, family=sm.families.Binomial()).fit()
+# 독립변수(exog): 절편항이 없으므로 log_R_RA 열만 그대로 추출
+exog = baseball_data.select("log_R_RA").to_numpy()
 
-# 3. 점추정치 및 분석 결과 요약 (R의 summary 대체)
-print("=== Model Summary ===")
-print(model_glm.summary())
+# 3. 일반화 선형 모형(GLM) 적합
+# family를 Binomial로 설정하고, 링크 함수를 Logit으로 지정합니다.
+logit_model = sm.GLM(
+    endog, 
+    exog, 
+    family=sm.families.Binomial(link=sm.families.links.Logit())
+).fit()
 
-# 4. 신뢰구간 확인 (R의 confint 대체)
-print("\n=== Confidence Interval (95%) ===")
-ci = model_glm.conf_int(alpha=0.05)
-print(f"2.5%  : {ci[0][0]:.5f}")
+# 1. 모수 k (beta_1)의 점추정치 및 요약 결과 확인
+print("=== 1. 모수 k의 점추정치 확인 (summary) ===")
+print(logit_model.summary())
+
+# 2. 모수 k (beta_1)의 95% 신뢰구간 확인
+print("\n=== 2. 모수 k의 95% 신뢰구간 확인 (confint) ===")
+ci = logit_model.conf_int(alpha=0.05)
+print(f" 2.5% : {ci[0][0]:.5f}")
 print(f"97.5% : {ci[0][1]:.5f}")
 ```
 
@@ -388,115 +382,123 @@ print(f"97.5% : {ci[0][1]:.5f}")
 ## R(Problem 2-1.3)
 
 ```{r}
-## i. Residual Deviance에 대한 해석 (카이제곱 분포와 비교)
-res_deviance <- deviance(model_glm)
-df_res <- df.residual(model_glm)
-p_value <- 1 - pchisq(res_deviance, df_res)
+library(ggplot2)
 
-cat("Residual Deviance:", res_deviance, "\n")
-cat("Degrees of Freedom:", df_res, "\n")
-cat("P-value:", p_value, "\n")
-# P-value가 0.05보다 크면 모형이 데이터에 잘 적합(fit)되었다고 해석할 수 있습니다.
-# (Deviance가 자유도와 비슷할수록 적합도가 좋음을 의미합니다.)
+# 1. Residual Deviance(잔차 이탈도) 확인을 위한 계산
+res_dev <- summary(logit_model)$deviance
+res_df <- summary(logit_model)$df.residual
+p_value <- 1 - pchisq(res_dev, res_df)
+
+cat("Residual Deviance:", res_dev, "\n")
+cat("Degrees of Freedom:", res_df, "\n")
+cat("p-value:", p_value, "\n")
+cat("Deviance / DF ratio:", res_dev / res_df, "\n")
 
 
-## ii. Deviance residuals vs linear predictors (eta) 산점도
-plot_data_2 <- data.frame(
-  eta = predict(model_glm, type = "link"),
-  dev_res = residuals(model_glm, type = "deviance")
-)
+# 2 & 3. 시각화를 위한 예측값 및 잔차 데이터 추가
+diag_data <- baseball_data %>%
+  mutate(
+    # 실제 승률 계산
+    WPct = W / (W + L),
+    # 선형 예측 변수 (eta)
+    linear_predictors = predict(logit_model, type = "link"),
+    # Deviance 잔차
+    dev_residuals = residuals(logit_model, type = "deviance"),
+    # 예측 승률 (WPct 예측값)
+    pred_WPct = predict(logit_model, type = "response")
+  )
 
-ggplot(plot_data_2, aes(x = eta, y = dev_res)) +
-  geom_point(alpha = 0.6) +
-  geom_hline(yintercept = 0, color = "red", linetype = "dashed") +
+# [진단 ii] Deviance residuals vs linear predictors 산점도
+plot_ii <- ggplot(diag_data, aes(x = linear_predictors, y = dev_residuals)) +
+  geom_point(alpha = 0.5) +
+  geom_hline(yintercept = 0, linetype = "dashed", color = "red") +
   theme_minimal() +
   labs(title = "Deviance Residuals vs Linear Predictors",
-       x = "Linear Predictor (eta)", 
-       y = "Deviance Residual")
+       x = "Linear Predictors (eta)",
+       y = "Deviance Residuals")
+print(plot_ii)
 
-
-## iii. 관측된 WPct와 모형에서 예측하는 WPct 산점도 비교
-plot_data_3 <- data.frame(
-  obs_WPct = baseball_data$WPct,
-  pred_WPct = predict(model_glm, type = "response")
-)
-
-ggplot(plot_data_3, aes(x = pred_WPct, y = obs_WPct)) +
-  geom_point(alpha = 0.6) +
-  geom_abline(slope = 1, intercept = 0, color = "blue", linetype = "dashed", size = 1) +
+# [진단 iii] 관측된 WPct vs 예측된 WPct 산점도
+plot_iii <- ggplot(diag_data, aes(x = pred_WPct, y = WPct)) +
+  geom_point(alpha = 0.5) +
+  geom_abline(intercept = 0, slope = 1, linetype = "dashed", color = "red") +
   theme_minimal() +
-  labs(title = "Observed vs Predicted WPct",
-       x = "Predicted WPct", 
-       y = "Observed WPct")
+  labs(title = "Observed vs Predicted Winning Percentage",
+       x = "Predicted Winning Percentage",
+       y = "Observed Winning Percentage")
+print(plot_iii)
 ```
 
 ## Python(Problem 2-1.3)
 
 ```{python}
 import polars as pl
-import statsmodels.api as sm
 from scipy.stats import chi2
-import plotly.express as px
+from plotnine import ggplot, aes, geom_point, geom_hline, geom_abline, theme_minimal, labs
 
-# (이전 단계에서 baseball_data, X, model_glm이 생성되어 있다고 가정합니다.)
+# 이전 코드에서 생성된 baseball_data와 logit_model이 메모리에 있다고 가정합니다.
 
-## i. Residual Deviance에 대한 해석 (카이제곱 분포와 비교)
-res_deviance = model_glm.deviance
-df_res = model_glm.df_resid
-p_value = chi2.sf(res_deviance, df_res)
+# === 1. Residual Deviance(잔차 이탈도) 확인을 위한 계산 ===
+# statsmodels 객체에서 직접 이탈도와 자유도를 추출할 수 있습니다.
+res_dev = logit_model.deviance
+res_df = logit_model.df_resid
 
-print(f"Residual Deviance: {res_deviance:.4f}")
-print(f"Degrees of Freedom: {df_res}")
-print(f"P-value: {p_value:.6f}")
+# p-value 계산: scipy.stats.chi2의 생존 함수(sf, 1 - cdf) 사용 (R의 1 - pchisq와 동일)
+p_value = chi2.sf(res_dev, res_df)
 
-## ii. Deviance residuals vs linear predictors (eta) 산점도
-eta = model_glm.predict(X, linear=True)
-dev_res = model_glm.resid_deviance
+print(f"Residual Deviance: {res_dev:.5f}")
+print(f"Degrees of Freedom: {res_df:.1f}")
+print(f"p-value: {p_value:.5f}")
+print(f"Deviance / DF ratio: {res_dev / res_df:.5f}\n")
 
-plot_data_2 = pl.DataFrame({
-    "eta": eta,
-    "dev_res": dev_res
-})
 
-fig2 = px.scatter(
-    plot_data_2, x="eta", y="dev_res", 
-    opacity=0.6,
-    title="Deviance Residuals vs Linear Predictors",
-    labels={"eta": "Linear Predictor (eta)", "dev_res": "Deviance Residual"}
+# === 2 & 3. 시각화를 위한 예측값 및 잔차 데이터 추가 ===
+# statsmodels의 결과 배열을 Polars DataFrame에 추가합니다.
+diag_data = baseball_data.with_columns(
+  
+    # 실제 승률 계산
+    WPct = pl.col("W") / (pl.col("W") + pl.col("L")),
+    
+    # 선형 예측 변수 (eta) - R의 predict(type="link")와 동일
+    linear_predictors = pl.Series(logit_model.fittedvalues),
+    
+    # Deviance 잔차 - R의 residuals(type="deviance")와 동일
+    dev_residuals = pl.Series(logit_model.resid_deviance),
+    
+    # 예측 승률 (WPct 예측값) - R의 predict(type="response")와 동일
+    pred_WPct = pl.Series(logit_model.predict())
 )
-# ✨ 수정 포인트: 결과를 fig2에 다시 할당하여 자동 출력을 막습니다.
-fig2 = fig2.add_hline(y=0, line_dash="dash", line_color="red")
-fig2 = fig2.update_layout(template="plotly_white")
-#fig2.show()
 
 
-## iii. 관측된 WPct와 모형에서 예측하는 WPct 산점도 비교
-pred_WPct = model_glm.predict(X)
-obs_WPct = baseball_data.get_column("WPct").to_numpy()
-
-plot_data_3 = pl.DataFrame({
-    "pred_WPct": pred_WPct,
-    "obs_WPct": obs_WPct
-})
-
-fig3 = px.scatter(
-    plot_data_3, x="pred_WPct", y="obs_WPct", 
-    opacity=0.6,
-    title="Observed vs Predicted WPct",
-    labels={"pred_WPct": "Predicted WPct", "obs_WPct": "Observed WPct"}
+# === [진단 ii] Deviance residuals vs linear predictors 산점도 ===
+plot_ii = (
+    ggplot(diag_data, aes(x='linear_predictors', y='dev_residuals')) +
+    geom_point(alpha=0.5) +
+    geom_hline(yintercept=0, linetype="dashed", color="red") +
+    theme_minimal() +
+    labs(title="Deviance Residuals vs Linear Predictors",
+         x="Linear Predictors (eta)",
+         y="Deviance Residuals")
 )
-# ✨ 수정 포인트: 결과를 fig3에 다시 할당하여 자동 출력을 막습니다.
-fig3 = fig3.add_shape(
-    type="line", 
-    x0=0, y0=0, x1=1, y1=1,
-    line=dict(dash="dash", color="blue", width=2)
+print(plot_ii)
+plot_ii.show()
+
+
+# === [진단 iii] 관측된 WPct vs 예측된 WPct 산점도 ===
+plot_iii = (
+    ggplot(diag_data, aes(x='pred_WPct', y='WPct')) +
+    geom_point(alpha=0.5) +
+    geom_abline(intercept=0, slope=1, linetype="dashed", color="red") +
+    theme_minimal() +
+    labs(title="Observed vs Predicted Winning Percentage",
+         x="Predicted Winning Percentage",
+         y="Observed Winning Percentage")
 )
-fig3 = fig3.update_layout(template="plotly_white")
-#fig3.show()
+print(plot_iii)
+plot_iii.show()
 ```
 
 :::
-
 
 
 ::: {.panel-tabset}
@@ -504,20 +506,25 @@ fig3 = fig3.update_layout(template="plotly_white")
 ## R(Problem 2-1.4)
 
 ```{r}
-# log(RA)와 log(RS)를 각각 설명변수로 하는 절편 없는 모형 적합
-model_split <- glm(WPct ~ 0 + log(RA) + log(RS), 
-                   family = binomial(link = "logit"), 
-                   weights = G, 
-                   data = baseball_data)
+# 필수 패키지 및 데이터 준비 (이전 문제와 동일)
+library(Lahman)
+library(tidyverse)
 
-# 추정 결과 확인
-summary(model_split)
+baseball_data <- Teams %>%
+  filter(yearID >= 2010 & yearID <= 2025 & yearID != 2020) %>%
+  mutate(
+    log_RA = log(RA),
+    log_R = log(R)  # Lahman 데이터에서 RS는 R로 기록되어 있습니다.
+  )
 
-# [비교 및 해석]
-# summary(model_split)의 결과를 확인해보면 다음과 같은 유사성을 발견해야 합니다.
-# 1. log(RS)의 추정된 회귀계수는 1번, 2번에서 구한 k(또는 beta_1)값과 거의 같습니다.
-# 2. log(RA)의 추정된 회귀계수는 -k (또는 -beta_1)값과 거의 같습니다.
-# 즉, |log(RA) 계수|와 |log(RS) 계수|가 거의 같은 수치로 나와 사실상 하나의 파라미터 k로 묶을 수 있음(유사한 모형임)을 증명하게 됩니다.
+# 4항 모형 적합: 절편이 없고 log(RA)와 log(RS)를 각각의 설명변수로 사용하는 로지스틱 회귀
+logit_sep_model <- glm(cbind(W, L) ~ 0 + log_RA + log_R, 
+                       family = binomial(link = "logit"), 
+                       data = baseball_data)
+
+# 회귀계수 추정치 및 신뢰구간 확인
+summary(logit_sep_model)
+confint(logit_sep_model)
 ```
 
 ## Python(Problem 2-1.4)
@@ -526,32 +533,53 @@ summary(model_split)
 import polars as pl
 import numpy as np
 import statsmodels.api as sm
+import pylahman
 
-# 1. 독립변수(X)와 종속변수(y) 데이터 가공
-# R의 log(RA), log(RS)를 각각 계산하여 NumPy 배열로 변환
-log_RA = np.log(baseball_data.get_column("RA").to_numpy())
-log_RS = np.log(baseball_data.get_column("RS").to_numpy())
+# 1. 데이터 필터링 및 파생 변수 생성
+baseball_data = (
+    pl.from_pandas(pylahman.Teams())
+    .filter(
+        (pl.col("yearID") >= 2010) & 
+        (pl.col("yearID") <= 2025) & 
+        (pl.col("yearID") != 2020)
+    )
+    .with_columns(
+        log_RA = pl.col("RA").log(),
+        log_R = pl.col("R").log()
+    )
+)
 
-# 두 독립변수를 하나의 행렬로 결합 (절편 없음)
-# 열 순서는 R 코드의 구조와 맞추기 위해 [log(RA), log(RS)] 순서로 구성합니다.
-X_split = np.column_stack([log_RA, log_RS])
+# 2. statsmodels GLM 입력 형식에 맞게 데이터 추출
+# 종속변수(endog): [성공 횟수(W), 실패 횟수(L)] 구조의 2차원 배열
+endog = baseball_data.select(["W", "L"]).to_numpy()
 
-# 종속변수 설정: [승리 횟수, 패배 횟수] 2차원 행렬
-w = baseball_data.get_column("W").to_numpy()
-g = baseball_data.get_column("G").to_numpy()
-y = np.column_stack([w, g - w])
+# 독립변수(exog): 절편항이 없으므로 log_RA와 log_R 두 개의 열을 추출
+exog = baseball_data.select(["log_RA", "log_R"]).to_numpy()
 
-# 2. 일반화 선형 모형(GLM) 중 로지스틱 모형(Binomial) 적합
-model_split = sm.GLM(y, X_split, family=sm.families.Binomial()).fit()
+# 3. 일반화 선형 모형(GLM) 적합
+# family를 Binomial로 설정하고, 링크 함수를 Logit으로 지정합니다.
+logit_sep_model = sm.GLM(
+    endog, 
+    exog, 
+    family=sm.families.Binomial(link=sm.families.links.Logit())
+).fit()
 
-# 3. 추정 결과 확인 (R의 summary 대체)
-# statsmodels는 기본 변수명을 x1, x2로 표시하므로, 
-# xname 파라미터를 사용하여 가독성을 높입니다.
-print("=== Model Split Summary ===")
-print(model_split.summary(xname=["log(RA)", "log(RS)"]))
+# 4. 회귀계수 추정치 및 요약 결과 확인 (summary)
+print("=== 1. 회귀계수 추정치 확인 (summary) ===")
+print(logit_sep_model.summary())
+
+# 5. 각 모수의 95% 신뢰구간 확인 (confint)
+print("\n=== 2. 각 모수의 95% 신뢰구간 확인 (confint) ===")
+ci = logit_sep_model.conf_int(alpha=0.05)
+
+# 변수별로 매칭하여 신뢰구간 출력
+feature_names = ["log_RA", "log_R"]
+for i, name in enumerate(feature_names):
+    print(f"[{name}]  2.5% : {ci[i][0]:.5f} | 97.5% : {ci[i][1]:.5f}")
 ```
 
 :::
+
 
 ## 문제 2-2
 
@@ -564,45 +592,33 @@ print(model_split.summary(xname=["log(RA)", "log(RS)"]))
 ## R(Problem 2-2)
 
 ```{r}
-# 필요한 패키지 로드
+# 필수 패키지 로드
 library(Lahman)
-library(dplyr)
-library(car) # 다중공선성(VIF) 확인을 위해 필요하므로 설치되어 있지 않다면 install.packages("car") 수행
+library(tidyverse)
+library(car) # VIF(다중공선성) 확인용
 
-# 1) 데이터 전처리 및 변수 생성
-baseball_data2 <- Teams %>%
+# 1. 데이터 전처리 (2010~2025년, 2020년 제외)
+baseball_data <- Teams %>%
   filter(yearID >= 2010 & yearID <= 2025 & yearID != 2020) %>%
   mutate(
-    WPct = W / G,
     logRS = log(R),
     logRA = log(RA)
   ) %>%
-  # 문제에서 제시한 설명변수들과 가중치(G) 선택
-  select(WPct, G, logRS, logRA, H, X2B, X3B, HR, BB, SO, CS, HBP, SF, 
+  # 분석에 사용할 변수들만 선택 후 결측치 제거
+  select(W, L, logRS, logRA, H, X2B, X3B, HR, BB, SO, CS, HBP, SF, 
          ERA, CG, SHO, IPouts, HA, HRA, BBA, SOA, E, DP, FP, SV) %>%
-  na.omit() # 결측치 제거
+  drop_na()
 
-# 2) 전체 변수를 포함한 로지스틱 회귀 모형 적합 (절편항 포함)
-# 비율 데이터를 반응변수로 사용하므로 weights = G를 지정합니다.
-model_full <- glm(WPct ~ logRS + logRA + H + X2B + X3B + HR + BB + SO + CS + HBP + SF + 
-                  ERA + CG + SHO + IPouts + HA + HRA + BBA + SOA + E + DP + FP + SV, 
-                  family = binomial(link = "logit"), 
-                  weights = G, 
-                  data = baseball_data2)
+# 2. 절편이 있는 풀 모형(Full Model) 적합
+full_model <- glm(cbind(W, L) ~ ., 
+                   family = binomial(link = "logit"), 
+                   data = baseball_data)
 
-cat("=== 전체 모형 요약 ===\n")
-summary(model_full)
+# 3. AIC 기준 단계별 변수선택 (Stepwise Selection)
+step_model <- step(full_model, direction = "both", trace = FALSE)
 
-# 3) AIC 기준 단계별 변수선택법(Stepwise) 적용
-# direction = "both"를 통해 전진선택과 후진제거를 동시에 고려합니다.
-model_step <- step(model_full, direction = "both", trace = FALSE)
-
-cat("\n=== 단계별 변수선택 완료 후 모형 요약 ===\n")
-summary(model_step)
-
-# 4) 다중공선성(VIF) 확인
-cat("\n=== 선택된 모형의 VIF(다중공선성) 확인 ===\n")
-vif(model_step)
+# 변수선택 후 결과 출력
+summary(step_model)
 ```
 
 ## Python(Problem 2-2)
@@ -611,15 +627,20 @@ vif(model_step)
 import polars as pl
 import numpy as np
 import statsmodels.api as sm
-from statsmodels.stats.outliers_influence import variance_inflation_factor
 import pylahman
 
-# ==========================================
-# 1. 데이터 전처리 및 변수 생성
-# ==========================================
-teams_df = pl.from_pandas(pylahman.Teams())
+# 1. 데이터 전처리
+# pylahman의 Teams 데이터를 Polars DataFrame으로 변환합니다.
+# R의 Lahman 패키지와 명칭을 맞추기 위해 '2B', '3B' 컬럼을 'X2B', 'X3B'로 변경합니다.
+teams_df = pl.from_pandas(pylahman.Teams()).rename({"2B": "X2B", "3B": "X3B"})
 
-baseball_data2 = (
+# 분석에 사용할 독립변수 목록
+features = [
+    "logRS", "logRA", "H", "X2B", "X3B", "HR", "BB", "SO", "CS", "HBP", "SF", 
+    "ERA", "CG", "SHO", "IPOuts", "HA", "HRA", "BBA", "SOA", "E", "DP", "FP", "SV"
+]
+
+baseball_data = (
     teams_df
     .filter(
         (pl.col("yearID") >= 2010) & 
@@ -627,107 +648,74 @@ baseball_data2 = (
         (pl.col("yearID") != 2020)
     )
     .with_columns(
-        WPct = pl.col("W") / pl.col("G"),
         logRS = pl.col("R").log(),
         logRA = pl.col("RA").log()
     )
-    # R에서는 숫자로 시작하는 컬럼(2B, 3B)을 X2B, X3B로 자동 변환하므로 이에 맞게 이름 변경
-    .rename({"2B": "X2B", "3B": "X3B"}) 
-    .select([
-        "WPct", "G", "logRS", "logRA", "H", "X2B", "X3B", "HR", "BB", "SO", "CS", "HBP", "SF", 
-        "ERA", "CG", "SHO", "IPOuts", "HA", "HRA", "BBA", "SOA", "E", "DP", "FP", "SV"
-    ])
-    .drop_nulls()
+    .select(["W", "L"] + features)
+    .drop_nulls()  # 결측치 제거 (R의 drop_na 역할)
 )
 
-# 반응변수(y) 생성: WPct와 G를 이용하여 승리 횟수(W)와 패배 횟수(G-W) 매핑
-w = np.round((baseball_data2.get_column("WPct") * baseball_data2.get_column("G")).to_numpy())
-g = baseball_data2.get_column("G").to_numpy()
-y = np.column_stack([w, g - w])
-
-# 설명변수(X) 리스트
-features = [
-    "logRS", "logRA", "H", "X2B", "X3B", "HR", "BB", "SO", "CS", "HBP", "SF", 
-    "ERA", "CG", "SHO", "IPOuts", "HA", "HRA", "BBA", "SOA", "E", "DP", "FP", "SV"
-]
-X_df = baseball_data2.select(features)
+# statsmodels 입력 형식에 맞게 데이터 추출 
+# 요약창(summary)에서 변수명을 유지하기 위해 exog는 Pandas DataFrame 형식을 활용합니다.
+endog = baseball_data.select(["W", "L"]).to_numpy()
+exog_df = baseball_data.select(features).to_pandas()
 
 
-# ==========================================
-# 2. 전체 변수를 포함한 로지스틱 회귀 모형 적합
-# ==========================================
-# 절편항 포함을 위해 sm.add_constant 사용
-X_full = sm.add_constant(X_df.to_numpy())
-model_full = sm.GLM(y, X_full, family=sm.families.Binomial()).fit()
-
-print("=== 전체 모형 요약 ===")
-print(model_full.summary(xname=["const"] + features))
-
-
-# ==========================================
-# 3. AIC 기준 단계별 변수선택법(Stepwise) 구현 (direction="both")
-# ==========================================
-def stepwise_glm_aic(X_polars, y, feature_list):
-    selected = set(feature_list) # 전체 모형에서 시작 (Backward/Forward 탐색)
+# 2. AIC 기준 양방향 단계적 변수 선택법 (R의 step(direction="both") 구현)
+def stepwise_selection(endog, exog_df, family):
+    current_features = list(exog_df.columns)
+    all_features = list(exog_df.columns)
     
-    def get_aic(features_subset):
-        if not features_subset:
-            exog = np.ones((len(y), 1))
-        else:
-            exog = sm.add_constant(X_polars.select(list(features_subset)).to_numpy())
-        return sm.GLM(y, exog, family=sm.families.Binomial()).fit().aic
-
-    current_aic = get_aic(selected)
-
     while True:
-        best_aic = current_aic
+        # 현재 변수 조합으로 모델을 적합하고 AIC 계산 (절편 포함)
+        X_current = sm.add_constant(exog_df[current_features])
+        best_aic = sm.GLM(endog, X_current, family=family).fit().aic
+        best_action = None
         best_feature = None
-        action = None
-
-        # 1. 후진 제거 (Drop)
-        for f in selected:
-            trial_aic = get_aic(selected - {f})
-            if trial_aic < best_aic:
-                best_aic, best_feature, action = trial_aic, f, "drop"
-
-        # 2. 전진 선택 (Add)
-        for f in set(feature_list) - selected:
-            trial_aic = get_aic(selected | {f})
-            if trial_aic < best_aic:
-                best_aic, best_feature, action = trial_aic, f, "add"
-
-        if action == "drop":
-            selected.remove(best_feature)
-            current_aic = best_aic
-        elif action == "add":
-            selected.add(best_feature)
-            current_aic = best_aic
+        
+        # [Backward 단계] 하나씩 제거해보며 AIC가 가장 낮아지는 변수 탐색
+        for var in current_features:
+            features_try = [f for f in current_features if f != var]
+            X_try = sm.add_constant(exog_df[features_try]) if features_try else np.ones((len(endog), 1))
+            aic_try = sm.GLM(endog, X_try, family=family).fit().aic
+            if aic_try < best_aic:
+                best_aic = aic_try
+                best_action = 'drop'
+                best_feature = var
+                
+        # [Forward 단계] 제외된 변수 중 하나씩 추가해보며 AIC가 가장 낮아지는 변수 탐색
+        excluded_features = [f for f in all_features if f not in current_features]
+        for var in excluded_features:
+            features_try = current_features + [var]
+            X_try = sm.add_constant(exog_df[features_try])
+            aic_try = sm.GLM(endog, X_try, family=family).fit().aic
+            if aic_try < best_aic:
+                best_aic = aic_try
+                best_action = 'add'
+                best_feature = var
+                
+        # AIC가 개선되는 최선의 조치가 있다면 반영하고 루프 계속, 없으면 정지
+        if best_action == 'drop':
+            current_features.remove(best_feature)
+        elif best_action == 'add':
+            current_features.append(best_feature)
         else:
-            break # AIC 개선이 더 이상 없으면 종료
+            break
             
-    return list(selected)
-
-selected_features = stepwise_glm_aic(X_df, y, features)
-
-# 선택된 변수들로 최종 모형 적합
-X_step = sm.add_constant(X_df.select(selected_features).to_numpy())
-model_step = sm.GLM(y, X_step, family=sm.families.Binomial()).fit()
-
-print("\n=== 단계별 변수선택 완료 후 모형 요약 ===")
-# R처럼 절편과 함께 선택된 변수 이름을 출력
-print(model_step.summary(xname=["const"] + selected_features))
+    return current_features
 
 
-# ==========================================
-# 4. 다중공선성(VIF) 확인 (car::vif 대체)
-# ==========================================
-print("\n=== 선택된 모형의 VIF(다중공선성) 확인 ===")
-# statsmodels.stats.outliers_influence의 variance_inflation_factor 활용
-for i, feature in enumerate(["const"] + selected_features):
-    if feature == "const": 
-        continue # R의 car::vif는 기본적으로 절편의 VIF를 제외하므로 건너뜁니다.
-    vif_val = variance_inflation_factor(X_step, i)
-    print(f"{feature:<10}: {vif_val:.4f}")
+# 단계적 변수 선택 알고리즘 실행
+binomial_family = sm.families.Binomial(link=sm.families.links.Logit())
+selected_features = stepwise_selection(endog, exog_df, binomial_family)
+
+
+# 3. 최종 선택된 최적의 변수 조합으로 모형 적합 및 결과 출력
+X_step = sm.add_constant(exog_df[selected_features])
+step_model = sm.GLM(endog, X_step, family=binomial_family).fit()
+
+print("=== 변수 선택 후 최종 모형 결과 (summary) ===")
+print(step_model.summary())
 ```
 
 :::
@@ -745,34 +733,33 @@ for i, feature in enumerate(["const"] + selected_features):
 ## R(Problem 2-3.1)
 
 ```{r}
-# 필요한 패키지 로드
+# 필수 패키지 로드
 library(Lahman)
-library(dplyr)
+library(tidyverse)
+library(car)
 
-# 데이터 전처리 (문제 2-2와 동일)
-baseball_data3 <- Teams %>%
+# 1. 데이터 전처리 (2010~2025년, 2020년 제외)
+baseball_data <- Teams %>%
   filter(yearID >= 2010 & yearID <= 2025 & yearID != 2020) %>%
   mutate(
-    WPct = W / G,
     logRS = log(R),
     logRA = log(RA)
   ) %>%
-  select(W, G, logRS, logRA, H, X2B, X3B, HR, BB, SO, CS, HBP, SF, 
+  # 분석에 사용할 변수들 선택 (종속변수는 'W' 하나만 사용)
+  select(W, logRS, logRA, H, X2B, X3B, HR, BB, SO, CS, HBP, SF, 
          ERA, CG, SHO, IPouts, HA, HRA, BBA, SOA, E, DP, FP, SV) %>%
-  na.omit()
+  drop_na()
 
-# 1) 포아송 회귀모형 적합 (G를 오프셋으로 지정)
-model_pois_full <- glm(W ~ logRS + logRA + H + X2B + X3B + HR + BB + SO + CS + HBP + SF + 
-                       ERA + CG + SHO + IPouts + HA + HRA + BBA + SOA + E + DP + FP + SV + 
-                       offset(log(G)), 
-                       family = poisson(link = "log"), 
-                       data = baseball_data3)
+# 2. 절편이 있는 포아송 풀 모형(Full Model) 적합
+poisson_full <- glm(W ~ ., 
+                    family = poisson(link = "log"), 
+                    data = baseball_data)
 
-# 2) AIC 기준 단계별 변수선택법 적용
-model_pois_step <- step(model_pois_full, direction = "both", trace = FALSE)
+# 3. AIC 기준 단계별 변수선택 (Stepwise Selection)
+poisson_step <- step(poisson_full, direction = "both", trace = FALSE)
 
-cat("=== 포아송 단계별 변수선택 모형 요약 ===\n")
-summary(model_pois_step)
+# 변수선택 후 결과 출력
+summary(poisson_step)
 ```
 
 ## Python(Problem 2-3.1)
@@ -783,12 +770,17 @@ import numpy as np
 import statsmodels.api as sm
 import pylahman
 
-# ==========================================
-# 1. 데이터 전처리 및 변수 생성
-# ==========================================
-teams_df = pl.from_pandas(pylahman.Teams())
+# 1. 데이터 전처리
+# R 패키지와 명칭을 맞추기 위해 '2B', '3B' 컬럼을 'X2B', 'X3B'로 변경
+teams_df = pl.from_pandas(pylahman.Teams()).rename({"2B": "X2B", "3B": "X3B"})
 
-baseball_data3 = (
+# 분석에 사용할 독립변수 목록
+features = [
+    "logRS", "logRA", "H", "X2B", "X3B", "HR", "BB", "SO", "CS", "HBP", "SF", 
+    "ERA", "CG", "SHO", "IPOuts", "HA", "HRA", "BBA", "SOA", "E", "DP", "FP", "SV"
+]
+
+baseball_data = (
     teams_df
     .filter(
         (pl.col("yearID") >= 2010) & 
@@ -796,113 +788,76 @@ baseball_data3 = (
         (pl.col("yearID") != 2020)
     )
     .with_columns(
-        # 이전 예제와 달리 종속변수가 승리 횟수(W) 자체이므로 WPct는 생략해도 무방합니다.
         logRS = pl.col("R").log(),
         logRA = pl.col("RA").log()
     )
-    .rename({"2B": "X2B", "3B": "X3B"}) 
-    .select([
-        "W", "G", "logRS", "logRA", "H", "X2B", "X3B", "HR", "BB", "SO", "CS", "HBP", "SF", 
-        "ERA", "CG", "SHO", "IPOuts", "HA", "HRA", "BBA", "SOA", "E", "DP", "FP", "SV"
-    ])
+    .select(["W"] + features)  # 이번에는 종속변수로 'W' 하나만 선택합니다.
     .drop_nulls()
 )
 
-# 반응변수(y) 생성: W (승리 횟수 카운트 데이터)
-y = baseball_data3.get_column("W").to_numpy()
-
-# 오프셋(Offset) 배열 생성: log(G)
-offset_val = np.log(baseball_data3.get_column("G").to_numpy())
-
-# 설명변수(X) 리스트
-features = [
-    "logRS", "logRA", "H", "X2B", "X3B", "HR", "BB", "SO", "CS", "HBP", "SF", 
-    "ERA", "CG", "SHO", "IPOuts", "HA", "HRA", "BBA", "SOA", "E", "DP", "FP", "SV"
-]
-X_df = baseball_data3.select(features)
+# 2. statsmodels 입력 형식에 맞게 데이터 추출 
+# 종속변수(endog): 승리 횟수(W)만 추출
+endog = baseball_data.select("W").to_numpy()
+exog_df = baseball_data.select(features).to_pandas()
 
 
-# ==========================================
-# 2. 포아송 회귀모형 적합 (전체 변수 + Offset)
-# ==========================================
-X_full = sm.add_constant(X_df.to_numpy())
-# R의 family=poisson(link="log")와 offset(log(G)) 대체
-model_pois_full = sm.GLM(
-    y, 
-    X_full, 
-    family=sm.families.Poisson(), 
-    offset=offset_val
-).fit()
-
-
-# ==========================================
-# 3. AIC 기준 단계별 변수선택법 (Poisson + Offset 지원)
-# ==========================================
-def stepwise_poisson_aic(X_polars, y_arr, offset_arr, feature_list):
-    selected = set(feature_list)
+# 3. AIC 기준 양방향 단계적 변수 선택법 (R의 step 함수 구현)
+def stepwise_selection(endog, exog_df, family):
+    current_features = list(exog_df.columns)
+    all_features = list(exog_df.columns)
     
-    def get_aic(features_subset):
-        if not features_subset:
-            # 변수가 모두 제거된 귀무 모형(Null Model)인 경우 절편만 남김
-            exog = np.ones((len(y_arr), 1))
-        else:
-            exog = sm.add_constant(X_polars.select(list(features_subset)).to_numpy())
-        
-        # 모델 적합 시 항상 동일한 오프셋을 적용하여 AIC 계산
-        return sm.GLM(
-            y_arr, 
-            exog, 
-            family=sm.families.Poisson(), 
-            offset=offset_arr
-        ).fit().aic
-
-    current_aic = get_aic(selected)
-
     while True:
-        best_aic = current_aic
+        # 현재 모형 적합 (모든 변수가 제거될 경우를 대비해 예외 처리 추가)
+        X_current = sm.add_constant(exog_df[current_features]) if current_features else np.ones((len(endog), 1))
+        best_aic = sm.GLM(endog, X_current, family=family).fit().aic
+        best_action = None
         best_feature = None
-        action = None
-
-        # 1. 후진 제거 (Drop)
-        for f in selected:
-            trial_aic = get_aic(selected - {f})
-            if trial_aic < best_aic:
-                best_aic, best_feature, action = trial_aic, f, "drop"
-
-        # 2. 전진 선택 (Add)
-        for f in set(feature_list) - selected:
-            trial_aic = get_aic(selected | {f})
-            if trial_aic < best_aic:
-                best_aic, best_feature, action = trial_aic, f, "add"
-
-        if action == "drop":
-            selected.remove(best_feature)
-            current_aic = best_aic
-        elif action == "add":
-            selected.add(best_feature)
-            current_aic = best_aic
+        
+        # [Backward 단계]
+        for var in current_features:
+            features_try = [f for f in current_features if f != var]
+            X_try = sm.add_constant(exog_df[features_try]) if features_try else np.ones((len(endog), 1))
+            aic_try = sm.GLM(endog, X_try, family=family).fit().aic
+            if aic_try < best_aic:
+                best_aic = aic_try
+                best_action = 'drop'
+                best_feature = var
+                
+        # [Forward 단계]
+        excluded_features = [f for f in all_features if f not in current_features]
+        for var in excluded_features:
+            features_try = current_features + [var]
+            X_try = sm.add_constant(exog_df[features_try])
+            aic_try = sm.GLM(endog, X_try, family=family).fit().aic
+            if aic_try < best_aic:
+                best_aic = aic_try
+                best_action = 'add'
+                best_feature = var
+                
+        # 업데이트 
+        if best_action == 'drop':
+            current_features.remove(best_feature)
+        elif best_action == 'add':
+            current_features.append(best_feature)
         else:
             break
             
-    return list(selected)
-
-# 단계별 알고리즘 실행
-selected_features = stepwise_poisson_aic(X_df, y, offset_val, features)
+    return current_features
 
 
-# ==========================================
-# 4. 선택된 모형 요약 결과 출력
-# ==========================================
-X_step = sm.add_constant(X_df.select(selected_features).to_numpy())
-model_pois_step = sm.GLM(
-    y, 
-    X_step, 
-    family=sm.families.Poisson(), 
-    offset=offset_val
-).fit()
+# 모형 패밀리를 Poisson으로 변경 (링크 함수는 기본값인 Log 사용)
+poisson_family = sm.families.Poisson(link=sm.families.links.Log())
 
-print("=== 포아송 단계별 변수선택 모형 요약 ===")
-print(model_pois_step.summary(xname=["const"] + selected_features))
+# 단계적 변수 선택 알고리즘 실행
+selected_features = stepwise_selection(endog, exog_df, poisson_family)
+
+
+# 4. 최종 선택된 최적의 변수 조합으로 포아송 모형 적합 및 결과 출력
+X_step = sm.add_constant(exog_df[selected_features]) if selected_features else np.ones((len(endog), 1))
+poisson_step = sm.GLM(endog, X_step, family=poisson_family).fit()
+
+print("=== 포아송 변수 선택 후 최종 모형 결과 (summary) ===")
+print(poisson_step.summary())
 ```
 
 :::
@@ -914,49 +869,95 @@ print(model_pois_step.summary(xname=["const"] + selected_features))
 ## R(Problem 2-3.2)
 
 ```{r}
-# 음이항 회귀를 위한 MASS 패키지 로드
-library(MASS)
+# 필수 패키지 로드
+library(Lahman)
+library(tidyverse)
+library(MASS) # 음이항 회귀 모형(glm.nb)을 위한 패키지
 
-# 음이항 회귀모형 적합 시도
-tryCatch({
-  model_nb <- glm.nb(W ~ logRS + logRA + H + X2B + X3B + HR + BB + SO + CS + HBP + SF + 
-                     ERA + CG + SHO + IPouts + HA + HRA + BBA + SOA + E + DP + FP + SV + 
-                     offset(log(G)), 
-                     data = baseball_data3)
-  summary(model_nb)
-}, error = function(e) {
-  cat("\n[오류 발생]:\n")
-  print(e)
-})
+# 1. 데이터 전처리 (이전과 동일하게 W를 종속변수로 사용)
+baseball_data <- Teams %>%
+  filter(yearID >= 2010 & yearID <= 2025 & yearID != 2020) %>%
+  mutate(
+    logRS = log(R),
+    logRA = log(RA)
+  ) %>%
+  dplyr::select(W, logRS, logRA, H, X2B, X3B, HR, BB, SO, CS, HBP, SF, 
+         ERA, CG, SHO, IPouts, HA, HRA, BBA, SOA, E, DP, FP, SV) %>%
+  drop_na()
+
+# 2. 음이항 회귀 풀 모형(Full Model) 적합 시도
+# 주의: 이 코드를 실행하면 에러나 경고 메시지가 발생할 가능성이 매우 높습니다.
+nb_full_model <- glm.nb(W ~ ., data = baseball_data)
+
+summary(nb_full_model)
 ```
 
 ## Python(Problem 2-3.2)
 
 ```{python}
+import polars as pl
+import numpy as np
 import statsmodels.api as sm
+import warnings
+import pylahman
 
-# R의 tryCatch 블록은 Python의 try-except 블록으로 변환합니다.
+# 수렴 경고 메시지를 깔끔하게 보기 위한 설정
+warnings.filterwarnings("always") 
+
+# 1. 데이터 전처리
+teams_df = pl.from_pandas(pylahman.Teams()).rename({"2B": "X2B", "3B": "X3B"})
+
+features = [
+    "logRS", "logRA", "H", "X2B", "X3B", "HR", "BB", "SO", "CS", "HBP", "SF", 
+    "ERA", "CG", "SHO", "IPOuts", "HA", "HRA", "BBA", "SOA", "E", "DP", "FP", "SV"
+]
+
+baseball_data = (
+    teams_df
+    .filter(
+        (pl.col("yearID") >= 2010) & 
+        (pl.col("yearID") <= 2025) & 
+        (pl.col("yearID") != 2020)
+    )
+    .with_columns(
+        logRS = pl.col("R").log(),
+        logRA = pl.col("RA").log()
+    )
+    .select(["W"] + features)
+    .drop_nulls()
+)
+
+# statsmodels 입력 형식에 맞게 데이터 추출
+# statsmodels의 이산형 모형(Discrete Model)은 1차원 배열을 선호하므로 ravel()을 사용합니다.
+endog = baseball_data.select("W").to_numpy().ravel()
+exog_df = baseball_data.select(features).to_pandas()
+
+# 절편이 포함된 풀 모형이므로 상수항 추가
+X_full = sm.add_constant(exog_df)
+
+
+# 2. 음이항 회귀 풀 모형(Full Model) 적합 시도
+print("=== 음이항 회귀 모형 적합 시도 ===")
 try:
-    # 1. 음이항 회귀모형 적합 (MASS::glm.nb 대체)
-    # statsmodels의 NegativeBinomial은 기본적으로 산포 파라미터(alpha)를 함께 추정합니다.
-    # 포아송 회귀와 동일하게 offset 파라미터를 통해 log(G)를 전달합니다.
-    model_nb = sm.NegativeBinomial(
-        y, 
-        X_full, 
-        offset=offset_val
-    ).fit(disp=False) # disp=False: 적합 과정의 반복(iteration) 로그 출력을 생략함
-
-    # 2. 결과 출력
-    print("=== 음이항 회귀 모형 요약 ===")
-    print(model_nb.summary(xname=["const"] + features))
-
+    # R의 MASS::glm.nb()와 동일하게 작동하는 sm.NegativeBinomial
+    nb_full_model = sm.NegativeBinomial(endog, X_full).fit()
+    print(nb_full_model.summary())
+    
 except Exception as e:
-    # 에러 발생 시 처리 로직
-    print("\n[오류 발생]:")
-    print(e)
+    # 모형 적합 중 에러(예: 선형대수 연산 에러 등)가 발생할 경우 출력
+    print(f"\n[오류 발생] 모형을 적합하는 중 다음 에러가 발생했습니다:\n{e}")
 ```
 
 :::
+
+주어진 변수를 모두 사용하여 승리 횟수(W)에 대한 음이항 회귀 모형(Negative Binomial Regression)을 적합한 결과, 모형이 정상적으로 수렴하지 못하는 문제가 발생했다.
+
+첫째, 모형의 산포 매개변수(Theta)가 약 1,085만이라는 비정상적으로 거대한 수치로 발산하였고, alternation limit reached 경고가 발생했다. 이는 투입된 설명변수들의 예측력이 너무 높아 잔차 분산이 평균보다 작아지는 과소산포(Underdispersion) 현상 때문이며, 과대산포를 해결하기 위해 고안된 음이항 모형이 이 데이터에 구조적으로 부적합함을 증명한다.
+
+둘째, logRA, ERA, H 등 팀 승리에 직결되는 핵심 변수들이 모두 통계적으로 유의하지 않게(p>0.05) 나타났다. 이는 변수 간의 극심한 **다중공선성(Multicollinearity)**으로 인해 표준오차가 팽창했기 때문이다. 반면, 이기는 경기에서만 발생하는 **내생성 변수인 세이브(SV)**는 비정상적으로 높은 유의성을 보였다.
+
+최종 결론: 승률처럼 상한선(162경기)이 통제되어 있고 변수 간의 상관성이 높은 야구 기록 분석에서는 카운트 모형(포아송, 음이항)보다 제한된 이항 분포를 다루는 로지스틱 회귀 모형(문제 2-2)이나 피타고리안 승률 모형이 훨씬 더 타당하고 강력한 모형이다.
+
 
 ## 문제 2-4
 
@@ -976,33 +977,29 @@ $$
 ## R(Problem 2-4)
 
 ```{r}
-# 필요한 패키지 로드
+# 필수 패키지 로드
 library(Lahman)
-library(dplyr)
+library(tidyverse)
 
-# 1) 데이터 전처리
-baseball_data4 <- Teams %>%
-  # 1994~2005년 (스테로이드 시대) 또는 2010~2025년(2020년 제외, 최근 시대) 데이터 필터링
+# 1. 시대별 데이터 필터링 및 변수 생성
+baseball_era_data <- Teams %>%
+  # 1994~2005년(스테로이드 시대) 또는 2010~2025년(최근 시대, 2020년 제외) 필터링
   filter((yearID >= 1994 & yearID <= 2005) | 
          (yearID >= 2010 & yearID <= 2025 & yearID != 2020)) %>%
   mutate(
-    WPct = W / G,
-    RS = R,
-    log_ratio = log(RS / RA),
-    # 지시함수 I 생성: 1994~2005년이면 1, 그 외(최근 시대)면 0
-    Steroid_Era = ifelse(yearID >= 1994 & yearID <= 2005, 1, 0)
-  ) %>%
-  filter(!is.na(RS) & !is.na(RA) & !is.na(WPct))
+    log_R_RA = log(R / RA),
+    # 지시함수 I 생성 (1994~2005년이면 1, 아니면 0)
+    is_steroid_era = ifelse(yearID >= 1994 & yearID <= 2005, 1, 0)
+  )
 
-# 2) 로지스틱 회귀 모형 적합 (절편 없음)
-# 0 + log_ratio는 기본 변수(k), log_ratio:Steroid_Era는 상호작용항(g)을 의미합니다.
-model_era <- glm(WPct ~ 0 + log_ratio + log_ratio:Steroid_Era, 
+# 2. 로지스틱 회귀 모형 적합
+# 식: 0 (절편 제거) + log_R_RA (기본 k) + log_R_RA:is_steroid_era (교호작용항 g)
+era_model <- glm(cbind(W, L) ~ 0 + log_R_RA + log_R_RA:is_steroid_era, 
                  family = binomial(link = "logit"), 
-                 weights = G, 
-                 data = baseball_data4)
+                 data = baseball_era_data)
 
-# 3) 결과 요약 출력
-summary(model_era)
+# 3. 결과 확인 (모수 k와 g의 추정치 및 p-value)
+summary(era_model)
 ```
 
 ## Python(Problem 2-4)
@@ -1013,58 +1010,46 @@ import numpy as np
 import statsmodels.api as sm
 import pylahman
 
-# ==========================================
-# 1. 데이터 전처리
-# ==========================================
-teams_df = pl.from_pandas(pylahman.Teams())
-
-baseball_data4 = (
-    teams_df
-    # 1994~2005년 (스테로이드 시대) 또는 2010~2025년(2020년 제외, 최근 시대) 데이터 필터링
+# 1. 시대별 데이터 필터링 및 변수 생성
+baseball_era_data = (
+    pl.from_pandas(pylahman.Teams())
+    # 1994~2005년(스테로이드 시대) 또는 2010~2025년(2020년 제외) 필터링
     .filter(
         ((pl.col("yearID") >= 1994) & (pl.col("yearID") <= 2005)) |
         ((pl.col("yearID") >= 2010) & (pl.col("yearID") <= 2025) & (pl.col("yearID") != 2020))
     )
     .with_columns(
-        WPct = pl.col("W") / pl.col("G"),
-        RS = pl.col("R"),
-        log_ratio = (pl.col("R") / pl.col("RA")).log(),
-        # R의 ifelse는 polars의 when().then().otherwise()로 구현합니다.
-        Steroid_Era = pl.when(
-            (pl.col("yearID") >= 1994) & (pl.col("yearID") <= 2005)
-        ).then(1).otherwise(0)
+        log_R_RA = (pl.col("R") / pl.col("RA")).log(),
+        
+        # 지시함수 I 생성 (R의 ifelse 역할)
+        is_steroid_era = pl.when((pl.col("yearID") >= 1994) & (pl.col("yearID") <= 2005))
+                           .then(1)
+                           .otherwise(0)
     )
-    .drop_nulls(subset=["RS", "RA", "WPct"])
+    .with_columns(
+        # R의 교호작용항(log_R_RA:is_steroid_era)을 직접 계산하여 파생 변수로 추가
+        interaction_term = pl.col("log_R_RA") * pl.col("is_steroid_era")
+    )
 )
 
-# ==========================================
-# 2. 로지스틱 회귀 모형 적합 (절편 없음)
-# ==========================================
-# 종속변수(y) 설정: [승리 횟수, 패배 횟수]
-w = baseball_data4.get_column("W").to_numpy()
-g = baseball_data4.get_column("G").to_numpy()
-y = np.column_stack([w, g - w])
+# 2. statsmodels 입력 형식에 맞게 데이터 추출
+# 종속변수: [성공(W), 실패(L)] 결합
+endog = baseball_era_data.select(["W", "L"]).to_numpy()
 
-# 독립변수(X) 설정: log_ratio 및 상호작용항
-log_ratio_arr = baseball_data4.get_column("log_ratio").to_numpy()
-steroid_era_arr = baseball_data4.get_column("Steroid_Era").to_numpy()
+# 독립변수: 기본 k (log_R_RA) + 교호작용항 g (interaction_term), 절편은 없음
+# 요약창에서 변수명을 예쁘게 보기 위해 Pandas DataFrame으로 넘깁니다.
+exog = baseball_era_data.select(["log_R_RA", "interaction_term"]).to_pandas()
 
-# R의 log_ratio:Steroid_Era(상호작용항)와 수학적으로 동일한 변수 생성
-interaction_term = log_ratio_arr * steroid_era_arr
+# 3. 로지스틱 회귀 모형 적합
+era_model = sm.GLM(
+    endog, 
+    exog, 
+    family=sm.families.Binomial(link=sm.families.links.Logit())
+).fit()
 
-# 절편(0+)이 없으므로 상수항(add_constant) 추가 없이 두 배열을 병합
-X = np.column_stack([log_ratio_arr, interaction_term])
-
-# 모형 적합
-model_era = sm.GLM(y, X, family=sm.families.Binomial()).fit()
-
-
-# ==========================================
-# 3. 결과 요약 출력
-# ==========================================
-print("=== 시대별 피타고리안 지수 비교 모형 요약 ===")
-# xname을 통해 R 모형의 변수명과 동일하게 출력 형식을 맞춥니다.
-print(model_era.summary(xname=["log_ratio", "log_ratio:Steroid_Era"]))
+# 4. 결과 확인 (모수 k와 g의 추정치 및 p-value)
+print("=== 시대별 교호작용을 포함한 로지스틱 회귀 결과 (summary) ===")
+print(era_model.summary())
 ```
 
 :::
@@ -1110,17 +1095,26 @@ RUN R -e "install.packages(c('reticulate', 'remotes', 'IRkernel'))" && \
 # 6. reticulate가 사용할 Python 경로 고정 (환경 변수)
 ENV RETICULATE_PYTHON=/opt/conda/envs/r-reticulate/bin/python
 
-# 7. (선택) Binder 사용자를 위한 권한 설정
-# Binder는 보통 'jovyan' 유저 권한으로 실행
-RUN chown -R ${NB_USER:-root} /opt/conda
+# 7. Binder용 jovyan 유저 생성
+ENV NB_USER=jovyan
+ENV NB_UID=1000
+RUN usermod -l ${NB_USER} rstudio && \
+    usermod -d /home/${NB_USER} -m ${NB_USER} && \
+    chown -R ${NB_USER} /opt/conda /home/${NB_USER}
+    
+# 8. 노트북 파일 복사
+COPY _site/hw03.ipynb /home/${NB_USER}/hw03.ipynb
+RUN chown ${NB_USER}:users /home/${NB_USER}/hw03.ipynb
 
-# 기본 실행 경로 설정
-WORKDIR /home/rstudio
+USER ${NB_USER}
+WORKDIR /home/${NB_USER}
+
+# Binder가 기대하는 포트
+EXPOSE 8888
+
 ```
 
 ### 답안
-
-![](Problem3-1.png)
 
 ## 문제 3-2. GitHub Actions 워크플로우 수정
 
@@ -1146,8 +1140,6 @@ WORKDIR /home/rstudio
 
 ### 답안
 
-![](Problem3-2.png)
-
 ## 문제 3-3. GitHub Pages에 Binder 링크 추가
 
 GitHub Page를 사용하여 저장소를 웹페이지로 활용하는 부분은 숙제 2에서와 같다.
@@ -1163,14 +1155,12 @@ GitHub Page를 사용하여 저장소를 웹페이지로 활용하는 부분은 
 이 숙제의 상세 분석 결과는 아래 링크에서 확인하실 수 있습니다.
 
 * [분석 리포트 (HTML)](./hw03.html) 
-* [주피터 노트북 (ipynb)](https://mybinder.org/v2/ghcr/<유저명>/my-r-env/latest?filepath=hw03.ipynb
+* [주피터 노트북 (ipynb)](https://mybinder.org/v2/gh/<유저명>/snu-stat/<repo명>/gh-pages?filepath=hw03.ipynb
 ```
 
-여기서 `<유저명>`은 제출자의 GitHub 유저 아이디이다.
+여기서 `<유저명>`은 제출자의 GitHub 유저 아이디이며, `<repo명>`은 hw3-로 시작하는 제출자의 repository 이름이다.
 
 작업을 GitHub 원격 저장소로 push한 후 숙제 2 문제 3-3의 3, 4번 과정을 반복하라.
 
 ### 답안
-
-![](Problem3-3.png)
 
