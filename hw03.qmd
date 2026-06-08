@@ -481,7 +481,7 @@ plot_ii = (
          y="Deviance Residuals")
 )
 print(plot_ii)
-plot_ii.show()
+# plot_ii.show()
 
 
 # === [진단 iii] 관측된 WPct vs 예측된 WPct 산점도 ===
@@ -495,7 +495,7 @@ plot_iii = (
          y="Observed Winning Percentage")
 )
 print(plot_iii)
-plot_iii.show()
+# plot_iii.show()
 ```
 
 :::
