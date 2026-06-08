@@ -1,13 +1,15 @@
 # 1. 기반 이미지 설정
 FROM rocker/tidyverse:4.4.0
 
-# 2. 시스템 의존성 설치 (ImageMagick 포함)
+# 2. 시스템 의존성 설치 (ImageMagick 및 ZeroMQ 포함)
 USER root
 RUN apt-get update && apt-get install -y \
     wget \
     git \
     imagemagick \
     libmagick++-dev \
+    libzmq3-dev \
+    pkg-config \
     && rm -rf /var/lib/apt/lists/*
 
 # 3. Miniconda 설치
