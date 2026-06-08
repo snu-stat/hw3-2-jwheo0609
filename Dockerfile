@@ -37,10 +37,11 @@ ENV NB_USER=jovyan
 ENV NB_UID=1000
 RUN usermod -l ${NB_USER} rstudio && \
     usermod -d /home/${NB_USER} -m ${NB_USER} && \
-    chown -R ${NB_USER} /opt/conda /home/${NB_USER}
+    chown -R ${NB_USER} /opt/conda /home/${NB_USER} 
     
 # 8. 노트북 파일 복사
-COPY _site/hw03.ipynb /home/${NB_USER}/hw03.ipynb
+# ✨ 수정된 부분: _site/ 대신 워크스페이스 루트에 생성된 hw03.ipynb를 직접 가져옵니다.
+COPY hw03.ipynb /home/${NB_USER}/hw03.ipynb
 RUN chown ${NB_USER}:users /home/${NB_USER}/hw03.ipynb
 
 USER ${NB_USER}

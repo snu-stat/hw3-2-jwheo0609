@@ -60,6 +60,9 @@ jobs:
           # ✨ 추가된 부분: Quarto가 무조건 Conda 환경의 파이썬을 사용하도록 강제 고정
           export QUARTO_PYTHON=$(conda info --base)/envs/r-reticulate/bin/python
           quarto render
+
+          # ✨ 추가된 부분: hw03.qmd 파일을 기반으로 hw03.ipynb를 루트 디렉토리에 강제 생성합니다.
+          quarto render hw03.qmd --to ipynb
         shell: bash -l {0}
 
       - name: Deploy to GitHub Pages
