@@ -23,7 +23,6 @@ dependencies:
   - r-tidyr
   - r-ggplot2
   - r-patchwork
-  - r-NHANES
   - r-tidyverse
   - r-car
   - r-mass
