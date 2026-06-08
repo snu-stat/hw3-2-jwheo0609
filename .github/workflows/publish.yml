@@ -63,6 +63,9 @@ jobs:
 
           # ✨ 추가된 부분: hw03.qmd 파일을 기반으로 hw03.ipynb를 루트 디렉토리에 강제 생성합니다.
           quarto render hw03.qmd --to ipynb
+
+          # ✨ 2. 추가된 부분: Docker가 찾을 수 있도록 루트 디렉토리로 꺼내옵니다.
+          cp _site/hw03.ipynb ./hw03.ipynb
         shell: bash -l {0}
 
       - name: Deploy to GitHub Pages
