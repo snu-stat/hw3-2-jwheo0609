@@ -1,0 +1,31 @@
+name: r-reticulate
+channels:
+  - conda-forge
+dependencies:
+  - python=3.13
+  - jupyter
+  - ipython
+  - ipykernel
+  - pip
+  - numpy
+  - pandas
+  - scipy
+  - statsmodels
+  - polars
+  - plotnine
+  - r-base
+  - r-reticulate
+  - r-irkernel
+  - r-knitr
+  - r-rmarkdown
+  - r-dplyr
+  - r-lahman
+  - r-tidyr
+  - r-ggplot2
+  - r-patchwork
+  - r-nhanes
+  - r-tidyverse
+  - r-car
+  - r-mass
+  - pip:
+    - pylahman
