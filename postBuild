@@ -1,0 +1,2 @@
+#!/bin/bash
+Rscript -e 'install.packages("NHANES", repos="http://cran.us.r-project.org")'
