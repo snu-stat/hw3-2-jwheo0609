@@ -1202,7 +1202,7 @@ EXPOSE 8888
 
 ### 답안
 
-![](Problem3-1.png)
+![](problem3-1.png)
 
 ## 문제 3-2. GitHub Actions 워크플로우 수정
 
@@ -1228,7 +1228,7 @@ EXPOSE 8888
 
 ### 답안
 
-![](Problem3-2.png)
+![](problem3-2.png)
 
 ## 문제 3-3. GitHub Pages에 Binder 링크 추가
 
@@ -1254,4 +1254,4 @@ GitHub Page를 사용하여 저장소를 웹페이지로 활용하는 부분은 
 
 ### 답안
 
-![](Problem3-3.png)
+![](problem3-3.png)
