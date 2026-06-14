@@ -440,7 +440,7 @@ print(plot_iii)
 ```{python}
 import polars as pl
 from scipy.stats import chi2
-from plotnine import *
+from plotnine import ggplot, aes, geom_point, geom_hline, geom_abline, theme_minimal, labs
 
 # 이전 코드에서 생성된 baseball_data와 logit_model이 메모리에 있다고 가정합니다.
 
